@@ -1,5 +1,26 @@
 package com.dbexplorer.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
+
 import com.dbexplorer.model.ConnectionInfo;
 import com.dbexplorer.model.DatabaseType;
 import com.dbexplorer.model.LazyQueryResult;
@@ -7,15 +28,6 @@ import com.dbexplorer.model.QueryResult;
 import com.dbexplorer.service.ConnectionManager;
 import com.dbexplorer.service.DynamoDbExecutor;
 import com.dbexplorer.service.QueryExecutor;
-import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.sql.Connection;
-import java.sql.SQLException;
 
 public class MainFrame extends JFrame {
 
@@ -28,6 +40,7 @@ public class MainFrame extends JFrame {
     private final JLabel statusLabel;
     
     private JButton newTabBtn;
+    private ThemeAnimationOverlay animationOverlay;
 
     public MainFrame() {
         super("DB Explorer");
@@ -51,6 +64,19 @@ public class MainFrame extends JFrame {
 
         setSize(1200, 800);
         setLocationRelativeTo(null);
+
+        // Install animation overlay as glass pane
+        animationOverlay = new ThemeAnimationOverlay();
+        animationOverlay.setBounds(0, 0, 1200, 800);
+        setGlassPane(animationOverlay);
+
+        // Keep overlay sized to frame
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                animationOverlay.setBounds(0, 0, getWidth(), getHeight());
+            }
+        });
     }
 
     private void initLayout() {
@@ -124,8 +150,20 @@ public class MainFrame extends JFrame {
         themeCombo.addActionListener(e -> {
             String selected = (String) themeCombo.getSelectedItem();
             if (selected != null) {
+                // Play animation first
+                ThemeAnimationOverlay.AnimationType anim =
+                        ThemeAnimationOverlay.animationFor(selected);
+
                 ThemeManager.applyTheme(selected);
                 SwingUtilities.updateComponentTreeUI(this);
+
+                // Re-install glass pane after updateComponentTreeUI (it resets it)
+                setGlassPane(animationOverlay);
+                animationOverlay.setBounds(0, 0, getWidth(), getHeight());
+
+                if (anim != ThemeAnimationOverlay.AnimationType.NONE) {
+                    animationOverlay.play(anim);
+                }
             }
         });
 
