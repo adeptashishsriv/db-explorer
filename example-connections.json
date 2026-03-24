@@ -1,0 +1,22 @@
+[
+  {
+    "id": "example-pg-1",
+    "name": "Local PostgreSQL",
+    "dbType": "POSTGRESQL",
+    "host": "localhost",
+    "port": 5432,
+    "database": "mydb",
+    "username": "postgres",
+    "password": "postgres"
+  },
+  {
+    "id": "example-mysql-1",
+    "name": "Local MySQL",
+    "dbType": "MYSQL",
+    "host": "localhost",
+    "port": 3306,
+    "database": "mydb",
+    "username": "root",
+    "password": "root"
+  }
+]

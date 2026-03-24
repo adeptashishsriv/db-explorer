@@ -1,0 +1,39 @@
+{
+  "name": "Cherry Red",
+  "dark": true,
+  "author": "DB Explorer",
+  "ui": {
+    "*": {
+      "background": "#2a1a1a",
+      "foreground": "#e5c8c8",
+      "selectionBackground": "#8e3a3a",
+      "selectionForeground": "#ffffff",
+      "disabledForeground": "#7a5a5a",
+      "inactiveBackground": "#2e1e1e"
+    },
+    "Panel.background": "#2a1a1a",
+    "Tree.background": "#241616",
+    "Tree.selectionBackground": "#8e3a3a",
+    "Table.background": "#241616",
+    "Table.selectionBackground": "#8e3a3a",
+    "Table.gridColor": "#3a2a2a",
+    "TableHeader.background": "#2e1e1e",
+    "TabbedPane.underlineColor": "#ff6a6a",
+    "TabbedPane.selectedBackground": "#2e1e1e",
+    "ToolBar.background": "#2e1e1e",
+    "MenuBar.background": "#2e1e1e",
+    "TextField.background": "#241616",
+    "TextPane.background": "#1e0f0f",
+    "EditorPane.background": "#1e0f0f",
+    "ScrollPane.background": "#2a1a1a",
+    "Button.background": "#3a2a2a",
+    "Button.foreground": "#e5c8c8",
+    "ComboBox.background": "#3a2a2a",
+    "ProgressBar.foreground": "#ff6a6a",
+    "Component.focusColor": "#ff6a6a",
+    "Component.borderColor": "#3a2a2a",
+    "Separator.foreground": "#3a2a2a",
+    "ScrollBar.track": "#2a1a1a",
+    "ScrollBar.thumb": "#3a2a2a"
+  }
+}
