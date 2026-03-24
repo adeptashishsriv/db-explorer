@@ -1,20 +1,34 @@
 package com.dbexplorer.ui;
 
-import com.dbexplorer.model.ConnectionInfo;
-import com.dbexplorer.model.DatabaseType;
-import com.dbexplorer.service.ConnectionManager;
-import com.dbexplorer.service.SchemaExplorerService;
-
-import javax.swing.*;
-import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.Connection;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import javax.swing.BorderFactory;
+import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTree;
+import javax.swing.SwingWorker;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
+
+import com.dbexplorer.model.ConnectionInfo;
+import com.dbexplorer.model.DatabaseType;
+import com.dbexplorer.service.ConnectionManager;
+import com.dbexplorer.service.SchemaExplorerService;
 
 /**
  * Left panel showing saved connections as a tree with expandable schema objects.
@@ -466,36 +480,44 @@ public class ConnectionListPanel extends JPanel {
 
             Object obj = node.getUserObject();
             if (obj instanceof ConnectionInfo info) {
-                setText("🗄️ " + info.getName());
-                setIcon(null);
-                if (connectionManager.isConnected(info.getId())) {
-                    setForeground(new Color(0, 160, 0));
-                }
-            } else if (obj instanceof SchemaNode sn) {
-                setText("🏗️ " + sn.schema());
-                setIcon(null);
-            } else if (obj instanceof CategoryNode cn) {
-                setText("📁 " + cn.category());
-                setIcon(null);
-            } else if (obj instanceof ObjectNode on) {
-                String icon = switch (on.category) {
-                    case CAT_TABLES -> "≡ ";
-                    case CAT_VIEWS -> "👁️ ";
-                    case CAT_FUNCTIONS, CAT_PROCEDURES -> "ƒ ";
-                    case CAT_INDEXES -> "🔖 ";
-                    case CAT_SEQUENCES -> "🔢 ";
-                    default -> "";
-                };
-                setText(icon + on.name());
-                setIcon(null);
-            } else if (obj instanceof String s) {
-                // Leaf object names (columns, etc.) or status messages
-                if (!s.startsWith("(") && !s.startsWith("Error") && !s.startsWith("Loading")) {
-                    setText("▪ " + s);
+                setText(info.getName());
+                boolean connected = connectionManager.isConnected(info.getId());
+                if (info.getDbType() == DatabaseType.DYNAMODB) {
+                    setIcon(DbIcons.DATABASE_DYNAMO);
+                } else if (info.getDbType() == DatabaseType.SQLITE) {
+                    setIcon(DbIcons.DATABASE_SQLITE);
                 } else {
+                    setIcon(connected ? DbIcons.DATABASE_CONNECTED : DbIcons.DATABASE_DISCONNECTED);
+                }
+                setForeground(connected ? new Color(0, 160, 0) : null);
+            } else if (obj instanceof SchemaNode sn) {
+                setText(sn.schema());
+                setIcon(DbIcons.SCHEMA);
+            } else if (obj instanceof CategoryNode cn) {
+                setIcon(expanded ? DbIcons.FOLDER_OPEN : DbIcons.FOLDER_CLOSED);
+                setText(cn.category());
+            } else if (obj instanceof ObjectNode on) {
+                setText(on.name());
+                setIcon(switch (on.category) {
+                    case CAT_TABLES    -> DbIcons.TABLE;
+                    case CAT_VIEWS     -> DbIcons.VIEW;
+                    case CAT_FUNCTIONS -> DbIcons.FUNCTION;
+                    case CAT_PROCEDURES -> DbIcons.PROCEDURE;
+                    case CAT_INDEXES   -> DbIcons.INDEX;
+                    case CAT_SEQUENCES -> DbIcons.SEQUENCE;
+                    default            -> DbIcons.TABLE;
+                });
+            } else if (obj instanceof String s) {
+                if (s.startsWith("Loading")) {
+                    setIcon(DbIcons.LOADING);
+                    setText(s);
+                } else if (!s.startsWith("(") && !s.startsWith("Error")) {
+                    setIcon(DbIcons.COLUMN);
+                    setText(s);
+                } else {
+                    setIcon(null);
                     setText(s);
                 }
-                setIcon(null);
             }
             return this;
         }

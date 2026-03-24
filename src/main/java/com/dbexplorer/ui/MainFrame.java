@@ -117,8 +117,9 @@ public class MainFrame extends JFrame {
         JButton addBtn = makeToolButton("Add Connection", "➕");
         addBtn.addActionListener(e -> showAddConnectionDialog());
 
-        JButton disconnectBtn = makeToolButton("Disconnect Tab", "⛔");
-        disconnectBtn.addActionListener(e -> disconnectActiveTab());
+        JButton disconnectBtn = makeToolButton("Disconnect DB", "⛔");
+        disconnectBtn.setToolTipText("Disconnect selected connection (tabs keep their binding)");
+        disconnectBtn.addActionListener(e -> disconnectSelectedConnection());
 
         JButton runBtn = makeToolButton("Run Query (Ctrl+Enter)", "▶");
         runBtn.setForeground(new Color(40, 160, 40));
@@ -254,11 +255,12 @@ public class MainFrame extends JFrame {
 
     private void deleteConnection(ConnectionInfo info) {
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Delete connection '" + info.getName() + "'?",
+                "Delete connection '" + info.getName() + "'?\n"
+                + "Existing query tabs bound to this connection will be marked disconnected.",
                 "Confirm Delete", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             connectionManager.deleteConnection(info.getId());
-            sqlEditorPanel.clearConnectionFromTabs(info.getId());
+            sqlEditorPanel.refreshTabHeaders(info.getId(), false);
             connectionListPanel.refreshList();
             logPanel.logInfo("Connection deleted: " + info.getName());
             updateStatus();
@@ -268,7 +270,8 @@ public class MainFrame extends JFrame {
     private void toggleConnection(ConnectionInfo info) {
         if (connectionManager.isConnected(info.getId())) {
             connectionManager.disconnect(info.getId());
-            sqlEditorPanel.clearConnectionFromTabs(info.getId());
+            // Tabs keep their binding — just update the status dot to red
+            sqlEditorPanel.refreshTabHeaders(info.getId(), false);
             logPanel.logInfo("Disconnected: " + info.getName());
         } else {
             try {
@@ -277,7 +280,8 @@ public class MainFrame extends JFrame {
                         ? info.getAwsRegion() : info.getJdbcUrl();
                 logPanel.logInfo("Connected: " + info.getName()
                         + " (" + connDetail + ")");
-                sqlEditorPanel.setActiveTabConnection(info);
+                // Tabs keep their binding — just update the status dot to green
+                sqlEditorPanel.refreshTabHeaders(info.getId(), true);
                 connectionListPanel.refreshList();
                 connectionListPanel.loadSchemasForConnection(info);
             } catch (SQLException ex) {
@@ -310,6 +314,7 @@ public class MainFrame extends JFrame {
             }
         }
         sqlEditorPanel.addNewTab(info);
+        sqlEditorPanel.refreshTabHeaders(info.getId(), true);
         updateStatus();
     }
     
@@ -358,6 +363,7 @@ public class MainFrame extends JFrame {
             }
             // Open new tab tied to this connection
             sqlEditorPanel.addNewTab(selectedInfo);
+            sqlEditorPanel.refreshTabHeaders(selectedInfo.getId(), true);
             updateStatus();
         } else {
             // No connection selected, just open a blank tab
@@ -365,14 +371,21 @@ public class MainFrame extends JFrame {
         }
     }
 
-    private void disconnectActiveTab() {
+    private void disconnectSelectedConnection() {
+        // Disconnect the connection that the active tab is bound to
         ConnectionInfo tabConn = sqlEditorPanel.getActiveTabConnection();
         if (tabConn == null) {
             logPanel.logInfo("Current tab has no connection.");
             return;
         }
-        sqlEditorPanel.setActiveTabConnection(null);
-        logPanel.logInfo("Tab disconnected from: " + tabConn.getName());
+        if (!connectionManager.isConnected(tabConn.getId())) {
+            logPanel.logInfo(tabConn.getName() + " is already disconnected.");
+            return;
+        }
+        connectionManager.disconnect(tabConn.getId());
+        sqlEditorPanel.refreshTabHeaders(tabConn.getId(), false);
+        connectionListPanel.refreshList();
+        logPanel.logInfo("Disconnected: " + tabConn.getName());
         updateStatus();
     }
 
@@ -409,6 +422,7 @@ public class MainFrame extends JFrame {
                     connectionManager.connect(tabConn);
                     logPanel.logInfo("Reconnected to DynamoDB: " + tabConn.getName());
                     connectionListPanel.refreshList();
+                    sqlEditorPanel.refreshTabHeaders(tabConn.getId(), true);
                 } catch (SQLException e) {
                     rp.displayError("Connection Lost",
                             "DynamoDB connection lost for " + tabConn.getName() + " and reconnection failed: " + e.getMessage());
@@ -451,6 +465,7 @@ public class MainFrame extends JFrame {
                  conn = connectionManager.connect(tabConn);
                  logPanel.logInfo("Reconnected to: " + tabConn.getName());
                  connectionListPanel.refreshList(); // Refresh UI status
+                 sqlEditorPanel.refreshTabHeaders(tabConn.getId(), true);
              } catch (SQLException e) {
                  rp.displayError("Connection Lost",
                          "Connection lost for " + tabConn.getName() + " and reconnection failed: " + e.getMessage());
@@ -521,6 +536,7 @@ public class MainFrame extends JFrame {
                  conn = connectionManager.connect(tabConn);
                  logPanel.logInfo("Reconnected to: " + tabConn.getName());
                  connectionListPanel.refreshList();
+                 sqlEditorPanel.refreshTabHeaders(tabConn.getId(), true);
              } catch (SQLException e) {
                 ExplainPlanPanel ep = ts.explainPlanPanel;
                 ts.bottomTabs.setSelectedComponent(ep);

@@ -1,9 +1,15 @@
 package com.dbexplorer.service;
 
-import com.dbexplorer.model.DatabaseType;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import java.sql.*;
-import java.util.*;
+import com.dbexplorer.model.DatabaseType;
 
 /**
  * Fetches schema metadata (schemas, tables, views, sequences, etc.) from a JDBC connection.
@@ -12,10 +18,14 @@ public class SchemaExplorerService {
 
     public List<String> getSchemas(Connection conn, DatabaseType dbType) throws SQLException {
         List<String> schemas = new ArrayList<>();
-        DatabaseMetaData meta = conn.getMetaData();
 
+        if (dbType == DatabaseType.SQLITE) {
+            schemas.add("main"); // SQLite has no real schemas; "main" is the default
+            return schemas;
+        }
+
+        DatabaseMetaData meta = conn.getMetaData();
         if (dbType == DatabaseType.MYSQL) {
-            // MySQL uses catalogs as "schemas"
             try (ResultSet rs = meta.getCatalogs()) {
                 while (rs.next()) schemas.add(rs.getString("TABLE_CAT"));
             }
@@ -40,8 +50,8 @@ public class SchemaExplorerService {
         List<String> columns = new ArrayList<>();
         DatabaseMetaData meta = conn.getMetaData();
         String catalog = (dbType == DatabaseType.MYSQL) ? schema : null;
-        String schemaPattern = (dbType == DatabaseType.MYSQL) ? null : schema;
-        
+        String schemaPattern = (dbType == DatabaseType.MYSQL || dbType == DatabaseType.SQLITE) ? null : schema;
+
         try (ResultSet rs = meta.getColumns(catalog, schemaPattern, tableName, null)) {
             while (rs.next()) {
                 String name = rs.getString("COLUMN_NAME");
@@ -58,7 +68,7 @@ public class SchemaExplorerService {
         List<String> names = new ArrayList<>();
         DatabaseMetaData meta = conn.getMetaData();
         String catalog = (dbType == DatabaseType.MYSQL) ? schema : null;
-        String schemaPattern = (dbType == DatabaseType.MYSQL) ? null : schema;
+        String schemaPattern = (dbType == DatabaseType.MYSQL || dbType == DatabaseType.SQLITE) ? null : schema;
 
         try (ResultSet rs = meta.getTables(catalog, schemaPattern, "%", types)) {
             while (rs.next()) names.add(rs.getString("TABLE_NAME"));
@@ -73,7 +83,7 @@ public class SchemaExplorerService {
             case POSTGRESQL -> "SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = ?";
             case ORACLE -> "SELECT sequence_name FROM all_sequences WHERE sequence_owner = ?";
             case SQLSERVER -> "SELECT name FROM sys.sequences WHERE schema_id = SCHEMA_ID(?)";
-            case MYSQL, DYNAMODB -> null;
+            case MYSQL, DYNAMODB, SQLITE -> null;
         };
         if (sql == null) return names;
 
@@ -96,7 +106,7 @@ public class SchemaExplorerService {
             case ORACLE -> "SELECT index_name FROM all_indexes WHERE owner = ? ORDER BY index_name";
             case SQLSERVER -> "SELECT i.name FROM sys.indexes i JOIN sys.tables t ON i.object_id = t.object_id "
                     + "JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = ? AND i.name IS NOT NULL ORDER BY i.name";
-            case MYSQL, DYNAMODB -> null;
+            case MYSQL, DYNAMODB, SQLITE -> null;
         };
         if (sql == null) return names;
 

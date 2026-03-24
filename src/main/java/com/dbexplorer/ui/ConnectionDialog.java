@@ -5,9 +5,26 @@ import com.dbexplorer.model.DatabaseType;
 import com.dbexplorer.service.ConnectionManager;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+
+import com.dbexplorer.model.ConnectionInfo;
+import com.dbexplorer.model.DatabaseType;
+import com.dbexplorer.service.ConnectionManager;
 
 public class ConnectionDialog extends JDialog {
 
@@ -22,6 +39,10 @@ public class ConnectionDialog extends JDialog {
     private final JPasswordField passwordField = new JPasswordField(20);
     private final JTextField driverPathField = new JTextField(30);
 
+    // SQLite fields
+    private final JTextField sqliteFileField = new JTextField(30);
+    private final JButton sqliteBrowseBtn = new JButton("Browse…");
+
     // AWS DynamoDB fields
     private final JTextField awsRegionField = new JTextField("us-east-1", 20);
     private final JTextField awsAccessKeyField = new JTextField(20);
@@ -30,6 +51,7 @@ public class ConnectionDialog extends JDialog {
 
     // Panels for toggling visibility
     private final List<Component[]> jdbcRows = new ArrayList<>();
+    private final List<Component[]> sqliteRows = new ArrayList<>();
     private final List<Component[]> dynamoRows = new ArrayList<>();
     private JPanel formPanel;
 
@@ -66,6 +88,22 @@ public class ConnectionDialog extends JDialog {
         addRow(formPanel, gbc, row++, "Username:", usernameField, jdbcRows);
         addRow(formPanel, gbc, row++, "Password:", passwordField, jdbcRows);
         addRow(formPanel, gbc, row++, "Driver Path (optional):", driverPathField, jdbcRows);
+
+        // SQLite-specific row (file path + browse button)
+        JPanel sqliteFilePanel = new JPanel(new BorderLayout(4, 0));
+        sqliteFilePanel.add(sqliteFileField, BorderLayout.CENTER);
+        sqliteFilePanel.add(sqliteBrowseBtn, BorderLayout.EAST);
+        sqliteBrowseBtn.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setDialogTitle("Select SQLite Database File");
+            fc.setFileFilter(new FileNameExtensionFilter(
+                    "SQLite files (*.db, *.sqlite, *.sqlite3)", "db", "sqlite", "sqlite3"));
+            fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                sqliteFileField.setText(fc.getSelectedFile().getAbsolutePath());
+            }
+        });
+        addRow(formPanel, gbc, row++, "Database File:", sqliteFilePanel, sqliteRows);
 
         // DynamoDB-specific rows
         addRow(formPanel, gbc, row++, "AWS Region:", awsRegionField, dynamoRows);
@@ -117,17 +155,22 @@ public class ConnectionDialog extends JDialog {
     private void toggleFieldVisibility() {
         DatabaseType sel = (DatabaseType) dbTypeCombo.getSelectedItem();
         boolean isDynamo = sel == DatabaseType.DYNAMODB;
+        boolean isSQLite = sel == DatabaseType.SQLITE;
 
         for (Component[] pair : jdbcRows) {
-            pair[0].setVisible(!isDynamo);
-            pair[1].setVisible(!isDynamo);
+            pair[0].setVisible(!isDynamo && !isSQLite);
+            pair[1].setVisible(!isDynamo && !isSQLite);
+        }
+        for (Component[] pair : sqliteRows) {
+            pair[0].setVisible(isSQLite);
+            pair[1].setVisible(isSQLite);
         }
         for (Component[] pair : dynamoRows) {
             pair[0].setVisible(isDynamo);
             pair[1].setVisible(isDynamo);
         }
 
-        if (!isDynamo && sel != null) {
+        if (!isDynamo && !isSQLite && sel != null) {
             portField.setText(String.valueOf(sel.getDefaultPort()));
         }
     }
@@ -135,12 +178,16 @@ public class ConnectionDialog extends JDialog {
     private void populateFields(ConnectionInfo info) {
         nameField.setText(info.getName());
         dbTypeCombo.setSelectedItem(info.getDbType());
-        hostField.setText(info.getHost());
-        portField.setText(String.valueOf(info.getPort()));
-        databaseField.setText(info.getDatabase());
-        usernameField.setText(info.getUsername());
-        passwordField.setText(info.getPassword());
-        if (info.getDriverPath() != null) driverPathField.setText(info.getDriverPath());
+        if (info.getDbType() == DatabaseType.SQLITE) {
+            sqliteFileField.setText(info.getDatabase() != null ? info.getDatabase() : "");
+        } else {
+            hostField.setText(info.getHost());
+            portField.setText(String.valueOf(info.getPort()));
+            databaseField.setText(info.getDatabase());
+            usernameField.setText(info.getUsername());
+            passwordField.setText(info.getPassword());
+            if (info.getDriverPath() != null) driverPathField.setText(info.getDriverPath());
+        }
         if (info.getAwsRegion() != null) awsRegionField.setText(info.getAwsRegion());
         if (info.getAwsAccessKey() != null) awsAccessKeyField.setText(info.getAwsAccessKey());
         if (info.getAwsSecretKey() != null) awsSecretKeyField.setText(info.getAwsSecretKey());
@@ -159,6 +206,8 @@ public class ConnectionDialog extends JDialog {
             info.setAwsSecretKey(new String(awsSecretKeyField.getPassword()));
             String ep = awsEndpointField.getText().trim();
             info.setAwsEndpoint(ep.isEmpty() ? null : ep);
+        } else if (dbType == DatabaseType.SQLITE) {
+            info.setDatabase(sqliteFileField.getText().trim());
         } else {
             info.setHost(hostField.getText().trim());
             info.setPort(Integer.parseInt(portField.getText().trim()));
@@ -191,6 +240,11 @@ public class ConnectionDialog extends JDialog {
     private void save() {
         if (nameField.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Connection name is required.");
+            return;
+        }
+        DatabaseType sel = (DatabaseType) dbTypeCombo.getSelectedItem();
+        if (sel == DatabaseType.SQLITE && sqliteFileField.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please select a SQLite database file.");
             return;
         }
         try {

@@ -6,6 +6,7 @@ public enum DatabaseType {
     ORACLE("Oracle", "oracle.jdbc.OracleDriver", "jdbc:oracle:thin:@%s:%d:%s", 1521, false),
     SQLSERVER("SQL Server", "com.microsoft.sqlserver.jdbc.SQLServerDriver",
             "jdbc:sqlserver://%s:%d;databaseName=%s;encrypt=false", 1433, false),
+    SQLITE("SQLite", "org.sqlite.JDBC", "jdbc:sqlite:%s", 0, false),
     DYNAMODB("DynamoDB", null, null, 0, true);
 
     private final String displayName;
@@ -30,6 +31,7 @@ public enum DatabaseType {
 
     public String buildUrl(String host, int port, String database) {
         if (urlTemplate == null) return displayName; // NoSQL types
+        if (this == SQLITE) return String.format(urlTemplate, database); // file path only
         return String.format(urlTemplate, host, port, database);
     }
 

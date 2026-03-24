@@ -36,14 +36,17 @@ public class SqlEditorPanel extends JPanel {
         public final ResultPanel resultPanel;
         public final ExplainPlanPanel explainPlanPanel;
         public final JTabbedPane bottomTabs;
-        public ConnectionInfo connectionInfo;
+        // connectionInfo is permanently bound at tab creation — never cleared
+        public final ConnectionInfo connectionInfo;
 
         TabState(JTextPane editor, ResultPanel resultPanel,
-                 ExplainPlanPanel explainPlanPanel, JTabbedPane bottomTabs) {
+                 ExplainPlanPanel explainPlanPanel, JTabbedPane bottomTabs,
+                 ConnectionInfo connectionInfo) {
             this.editor = editor;
             this.resultPanel = resultPanel;
             this.explainPlanPanel = explainPlanPanel;
             this.bottomTabs = bottomTabs;
+            this.connectionInfo = connectionInfo;
         }
     }
 
@@ -113,11 +116,12 @@ public class SqlEditorPanel extends JPanel {
 
         tabbedPane.addTab(displayTitle, splitPane);
         int idx = tabbedPane.getTabCount() - 1;
-        tabbedPane.setTabComponentAt(idx, createTabHeader(displayTitle, splitPane));
+        tabbedPane.setTabComponentAt(idx, createTabHeader(baseTitle,
+                connectionInfo != null ? connectionInfo.getName() : null, splitPane));
         tabbedPane.setSelectedIndex(idx);
 
-        TabState state = new TabState(editor, resultPanel, explainPlanPanel, bottomTabs);
-        state.connectionInfo = connectionInfo;
+        TabState state = new TabState(editor, resultPanel, explainPlanPanel, bottomTabs,
+                connectionInfo);
         tabStates.put(splitPane, state);
 
         editor.requestFocusInWindow();
@@ -134,39 +138,71 @@ public class SqlEditorPanel extends JPanel {
         return s != null ? s.connectionInfo : null;
     }
 
+    /**
+     * No longer changes the tab's connection — tabs are permanently bound.
+     * Kept for API compatibility but does nothing.
+     */
     public void setActiveTabConnection(ConnectionInfo connectionInfo) {
-        int idx = tabbedPane.getSelectedIndex();
-        if (idx < 0) return;
-        Component comp = tabbedPane.getComponentAt(idx);
-        TabState s = tabStates.get(comp);
-        if (s != null) {
-            s.connectionInfo = connectionInfo;
-        }
-        updateTabHeader(idx, connectionInfo != null ? connectionInfo.getName() : null);
+        // intentionally empty — connection binding is immutable after tab creation
     }
 
-    public void clearConnectionFromTabs(String connectionId) {
+    /**
+     * Refreshes the status dot on all tab headers for the given connectionId.
+     * Call this after connect/disconnect so the dot updates without changing the binding.
+     */
+    public void refreshTabHeaders(String connectionId, boolean connected) {
         for (int i = 0; i < tabbedPane.getTabCount(); i++) {
             Component comp = tabbedPane.getComponentAt(i);
             TabState s = tabStates.get(comp);
             if (s != null && s.connectionInfo != null
                     && s.connectionInfo.getId().equals(connectionId)) {
-                s.connectionInfo = null;
-                updateTabHeader(i, null);
+                updateTabHeaderStatus(i, s.connectionInfo.getName(), connected);
             }
         }
     }
 
-    private void updateTabHeader(int idx, String connectionName) {
+    /**
+     * No longer clears the connection binding — tabs are permanently bound.
+     * Only refreshes the header dot to show disconnected state.
+     */
+    public void clearConnectionFromTabs(String connectionId) {
+        refreshTabHeaders(connectionId, false);
+    }
+
+    private void updateTabHeaderStatus(int idx, String connectionName, boolean connected) {
         Component header = tabbedPane.getTabComponentAt(idx);
-        if (header instanceof JPanel panel && panel.getComponentCount() > 0
-                && panel.getComponent(0) instanceof JLabel label) {
-            String base = label.getText();
-            int dashIdx = base.indexOf(" — ");
-            if (dashIdx > 0) base = base.substring(0, dashIdx);
-            label.setText(connectionName != null ? base + " — " + connectionName : base);
+        if (!(header instanceof JPanel panel)) return;
+        for (Component c : panel.getComponents()) {
+            if (c instanceof JLabel lbl && lbl.getClientProperty("statusDot") != null) {
+                lbl.setIcon(connected ? DOT_GREEN : DOT_RED);
+                lbl.setToolTipText(connected ? "Connected" : "Disconnected");
+                lbl.repaint();
+            }
         }
     }
+
+    /** A small filled circle icon used as a connection status indicator. */
+    private static Icon makeStatusDot(Color color) {
+        return new Icon() {
+            @Override public int getIconWidth()  { return 10; }
+            @Override public int getIconHeight() { return 10; }
+            @Override public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(color);
+                g2.fillOval(x + 1, y + 1, 8, 8);
+                g2.setColor(color.darker());
+                g2.setStroke(new BasicStroke(0.8f));
+                g2.drawOval(x + 1, y + 1, 8, 8);
+                g2.dispose();
+            }
+        };
+    }
+
+    private static final Icon DOT_GREEN = makeStatusDot(new Color(34, 197, 94));
+    private static final Icon DOT_RED   = makeStatusDot(new Color(239, 68, 68));
+    private static final Icon DOT_GREY  = makeStatusDot(new Color(160, 160, 160));
 
     private JTextPane createEditor() {
         JTextPane editor = new JTextPane();
@@ -228,10 +264,24 @@ public class SqlEditorPanel extends JPanel {
         return editor;
     }
 
-    private JPanel createTabHeader(String title, JSplitPane tabComponent) {
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    private JPanel createTabHeader(String baseTitle, String connectionName,
+                                    JSplitPane tabComponent) {
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         header.setOpaque(false);
-        header.add(new JLabel(title));
+
+        // Status dot icon label — green if connected, grey if no connection
+        JLabel dotLabel = new JLabel(connectionName != null ? DOT_GREEN : DOT_GREY);
+        dotLabel.putClientProperty("statusDot", Boolean.TRUE);
+        dotLabel.setToolTipText(connectionName != null ? "Connected" : "No connection");
+        header.add(dotLabel);
+
+        // Tab title label
+        String fullTitle = connectionName != null ? baseTitle + " — " + connectionName : baseTitle;
+        JLabel titleLabel = new JLabel(fullTitle);
+        titleLabel.putClientProperty("tabTitle", Boolean.TRUE);
+        titleLabel.putClientProperty("baseTitle", baseTitle);
+        header.add(titleLabel);
+
         JButton closeBtn = new JButton("\u00d7");
         closeBtn.setFont(closeBtn.getFont().deriveFont(Font.BOLD, 14f));
         closeBtn.setBorderPainted(false);

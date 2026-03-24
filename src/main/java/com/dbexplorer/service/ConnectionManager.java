@@ -1,19 +1,22 @@
 package com.dbexplorer.service;
 
-import com.dbexplorer.model.ConnectionInfo;
-import com.dbexplorer.model.DatabaseType;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.dbexplorer.model.ConnectionInfo;
+import com.dbexplorer.model.DatabaseType;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 public class ConnectionManager {
 
@@ -118,7 +121,7 @@ public class ConnectionManager {
     public Connection connect(ConnectionInfo info) throws SQLException {
         if (info.getDbType() == DatabaseType.DYNAMODB) {
             getDynamoDbExecutor().connect(info);
-            return null; // No JDBC connection for DynamoDB
+            return null;
         }
         try {
             Class.forName(info.getDbType().getDriverClass());
@@ -126,8 +129,12 @@ public class ConnectionManager {
             throw new SQLException("JDBC driver not found: " + info.getDbType().getDriverClass()
                     + ". Ensure the driver JAR is on the classpath.", e);
         }
-        Connection conn = DriverManager.getConnection(
-                info.getJdbcUrl(), info.getUsername(), info.getPassword());
+        Connection conn;
+        if (info.getDbType() == DatabaseType.SQLITE) {
+            conn = DriverManager.getConnection(info.getJdbcUrl());
+        } else {
+            conn = DriverManager.getConnection(info.getJdbcUrl(), info.getUsername(), info.getPassword());
+        }
         activeConnections.put(info.getId(), conn);
         return conn;
     }
@@ -166,8 +173,12 @@ public class ConnectionManager {
         } catch (ClassNotFoundException e) {
             throw new SQLException("JDBC driver not found: " + info.getDbType().getDriverClass(), e);
         }
-        Connection conn = DriverManager.getConnection(
-                info.getJdbcUrl(), info.getUsername(), info.getPassword());
+        Connection conn;
+        if (info.getDbType() == DatabaseType.SQLITE) {
+            conn = DriverManager.getConnection(info.getJdbcUrl());
+        } else {
+            conn = DriverManager.getConnection(info.getJdbcUrl(), info.getUsername(), info.getPassword());
+        }
         conn.close();
         return null;
     }
