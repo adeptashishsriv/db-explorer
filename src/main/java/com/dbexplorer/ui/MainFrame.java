@@ -21,6 +21,8 @@ import javax.swing.JSplitPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 
+import com.dbexplorer.health.DashboardConfig;
+import com.dbexplorer.health.HealthCollector;
 import com.dbexplorer.model.ConnectionInfo;
 import com.dbexplorer.model.DatabaseType;
 import com.dbexplorer.model.LazyQueryResult;
@@ -37,7 +39,14 @@ public class MainFrame extends JFrame {
     private final SqlEditorPanel sqlEditorPanel;
     private final LogPanel logPanel;
     private final JLabel statusLabel;
-    
+
+    // Dashboard
+    private final HealthCollector healthCollector;
+    private final DashboardConfig dashboardConfig;
+    private DashboardPanel dashboardPanel;
+    private JSplitPane outerSplit;
+    private JButton dashboardBtn;
+
     private JButton newTabBtn;
     private ThemeAnimationOverlay animationOverlay;
 
@@ -52,6 +61,11 @@ public class MainFrame extends JFrame {
         sqlEditorPanel.setConnectionManager(connectionManager);
         logPanel = new LogPanel();
         statusLabel = new JLabel("No active connection");
+
+        // Dashboard — load config and create components (disabled by default)
+        dashboardConfig  = DashboardConfig.load();
+        healthCollector  = new HealthCollector();
+        dashboardPanel   = new DashboardPanel(healthCollector, dashboardConfig);
 
         initLayout();
         initToolbar();
@@ -107,6 +121,15 @@ public class MainFrame extends JFrame {
 
         add(mainSplit, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);
+
+        // Outer split: main content | dashboard panel (hidden by default)
+        dashboardPanel.setVisible(false);
+        outerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, mainSplit, dashboardPanel);
+        outerSplit.setResizeWeight(1.0);
+        outerSplit.setDividerSize(0);
+        outerSplit.setEnabled(false);
+        remove(mainSplit);
+        add(outerSplit, BorderLayout.CENTER);
     }
 
     private void initToolbar() {
@@ -168,6 +191,10 @@ public class MainFrame extends JFrame {
         toolbar.add(explainBtn);
         toolbar.addSeparator();
         toolbar.add(clearBtn);
+        toolbar.addSeparator();
+        dashboardBtn = makeToolButton("Toggle Health Dashboard", DbIcons.TB_DASHBOARD);
+        dashboardBtn.addActionListener(e -> toggleDashboard());
+        toolbar.add(dashboardBtn);
         toolbar.add(Box.createHorizontalGlue());
         toolbar.add(new JLabel("Theme: "));
         toolbar.add(themeCombo);
@@ -214,6 +241,7 @@ public class MainFrame extends JFrame {
         connectionListPanel.addTreeSelectionListener(e -> {
             ConnectionInfo info = connectionListPanel.getSelectedConnection();
             newTabBtn.setEnabled(info != null);
+            if (info != null) dashboardPanel.onConnectionChanged(info);
         });
         sqlEditorPanel.setOnRunQuery(this::runQuery);
         sqlEditorPanel.addChangeListener(e -> updateStatus());
@@ -224,12 +252,47 @@ public class MainFrame extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                healthCollector.stop();
                 queryExecutor.shutdown();
                 connectionManager.disconnectAll();
                 dispose();
                 System.exit(0);
             }
         });
+    }
+
+    // --- Dashboard toggle ---
+
+    private void toggleDashboard() {
+        ConnectionInfo info = connectionListPanel.getSelectedConnection();
+        boolean nowVisible = !dashboardPanel.isVisible();
+
+        if (nowVisible) {
+            if (info == null) {
+                JOptionPane.showMessageDialog(this,
+                    "Please select a connection first to enable the Health Dashboard.",
+                    "No Connection Selected", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            dashboardPanel.setVisible(true);
+            outerSplit.setDividerSize(5);
+            outerSplit.setEnabled(true);
+            outerSplit.setDividerLocation(getWidth() - 310);
+            dashboardConfig.setEnabledFor(info.getId(), true);
+            DashboardConfig.save(dashboardConfig);
+            healthCollector.start(info, dashboardConfig, dashboardPanel::updateSnapshot);
+            logPanel.logInfo("Health Dashboard enabled for: " + info.getName());
+        } else {
+            dashboardPanel.setVisible(false);
+            outerSplit.setDividerSize(0);
+            outerSplit.setEnabled(false);
+            healthCollector.stop();
+            if (info != null) {
+                dashboardConfig.setEnabledFor(info.getId(), false);
+                DashboardConfig.save(dashboardConfig);
+            }
+            logPanel.logInfo("Health Dashboard disabled.");
+        }
     }
 
     // --- Connection actions ---

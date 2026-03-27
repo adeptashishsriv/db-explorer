@@ -1,17 +1,42 @@
 package com.dbexplorer.ui;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.CubicCurve2D;
+import java.awt.image.BufferedImage;
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
+import javax.swing.JPanel;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+
 import com.dbexplorer.model.ConnectionInfo;
 import com.dbexplorer.model.DatabaseType;
 import com.dbexplorer.service.SchemaExplorerService;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.*;
-import java.awt.image.BufferedImage;
-import java.sql.Connection;
-import java.util.*;
-import java.util.List;
 
 /**
  * Interactive ER-style schema diagram with:
@@ -32,18 +57,62 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
     private static final int V_GAP         = 70;   // vertical gap between rows
     private static final int RESIZE_HANDLE = 10;
 
-    // ── Colours ───────────────────────────────────────────────────────────────
-    private static final Color C_HEADER_BG = new Color(45, 85, 140);
-    private static final Color C_HEADER_FG = Color.WHITE;
-    private static final Color C_TABLE_BG  = new Color(30, 30, 45);
-    private static final Color C_TABLE_FG  = new Color(220, 220, 230);
-    private static final Color C_PK_FG     = new Color(255, 215, 80);
-    private static final Color C_FK_FG     = new Color(100, 200, 255);
-    private static final Color C_BORDER    = new Color(80, 120, 180);
-    private static final Color C_LINE      = new Color(100, 180, 255, 200);
-    private static final Color C_LINE_HL   = new Color(255, 200, 80, 230);
-    private static final Color C_CANVAS_BG = new Color(18, 18, 28);
-    private static final Color C_GRID      = new Color(35, 35, 50);
+    // ── Colours — derived from active theme at paint time ────────────────────
+    // All color accessors read from UIManager so they adapt to any FlatLaf theme.
+
+    private static Color cCanvasBg() {
+        Color c = UIManager.getColor("Panel.background");
+        return c != null ? c : new Color(245, 245, 245);
+    }
+    private static Color cGrid() {
+        Color bg = cCanvasBg();
+        // Slightly darker/lighter than background for subtle grid
+        boolean dark = isDark(bg);
+        return dark ? bg.brighter().brighter() : bg.darker();
+    }
+    private static Color cHeaderBg() {
+        Color c = UIManager.getColor("Button.default.background");
+        if (c == null) c = UIManager.getColor("controlHighlight");
+        return c != null ? c : new Color(45, 85, 140);
+    }
+    private static Color cHeaderFg() {
+        Color c = UIManager.getColor("Button.default.foreground");
+        return c != null ? c : Color.WHITE;
+    }
+    private static Color cTableBg() {
+        Color c = UIManager.getColor("Table.background");
+        return c != null ? c : Color.WHITE;
+    }
+    private static Color cTableFg() {
+        Color c = UIManager.getColor("Table.foreground");
+        return c != null ? c : Color.BLACK;
+    }
+    private static Color cBorder() {
+        Color c = UIManager.getColor("Component.borderColor");
+        if (c == null) c = UIManager.getColor("Separator.foreground");
+        return c != null ? c : new Color(180, 180, 200);
+    }
+    private static Color cPkFg() {
+        // Amber/gold — readable on both light and dark
+        return new Color(180, 120, 0);
+    }
+    private static Color cFkFg() {
+        Color c = UIManager.getColor("Component.accentColor");
+        if (c == null) c = UIManager.getColor("Button.default.background");
+        return c != null ? c : new Color(0, 100, 200);
+    }
+    private static Color cLine() {
+        Color accent = UIManager.getColor("Component.accentColor");
+        if (accent == null) accent = new Color(80, 140, 220);
+        return new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 180);
+    }
+    private static Color cLineHl() {
+        return new Color(220, 160, 0, 220);
+    }
+    private static boolean isDark(Color c) {
+        // Perceived luminance
+        return (0.299 * c.getRed() + 0.587 * c.getGreen() + 0.114 * c.getBlue()) < 128;
+    }
 
     // ── Model ─────────────────────────────────────────────────────────────────
     private final List<TableBox> tables    = new ArrayList<>();
@@ -69,7 +138,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
     private boolean loading    = true;
 
     public SchemaDiagramPanel() {
-        setBackground(C_CANVAS_BG);
+        // Background set dynamically in paintComponent to track theme changes
         setPreferredSize(new Dimension(2400, 1800));
         installMouseHandlers();
     }
@@ -338,6 +407,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
 
     @Override
     protected void paintComponent(Graphics g) {
+        setBackground(cCanvasBg());
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
@@ -348,7 +418,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
         g2.scale(zoom, zoom);
 
         if (loading) {
-            g2.setColor(C_TABLE_FG);
+            g2.setColor(cTableFg());
             g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
             g2.drawString(statusText, 40, 60);
             g2.dispose();
@@ -363,11 +433,12 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
         for (TableBox t : tables) drawTable(g2, t, t == highlighted);
         g2.dispose();
 
-        // Status bar — screen space
+        // Status bar — screen space, theme-aware
         Graphics2D gs = (Graphics2D) g.create();
-        gs.setColor(new Color(0, 0, 0, 150));
+        Color barBg = cCanvasBg().darker();
+        gs.setColor(new Color(barBg.getRed(), barBg.getGreen(), barBg.getBlue(), 200));
         gs.fillRect(0, getHeight() - 22, getWidth(), 22);
-        gs.setColor(new Color(180, 180, 200));
+        gs.setColor(cTableFg());
         gs.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         gs.drawString(statusText + "   zoom: " + String.format("%.0f%%", zoom * 100)
                 + "   Left-drag: move  •  Right-drag: pan  •  Scroll: zoom  •  Corner: resize",
@@ -376,7 +447,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
     }
 
     private void drawGrid(Graphics2D g2) {
-        g2.setColor(C_GRID);
+        g2.setColor(cGrid());
         int step = 40;
         for (int x = 0; x < getWidth();  x += step) g2.drawLine(x, 0, x, getHeight());
         for (int y = 0; y < getHeight(); y += step) g2.drawLine(0, y, getWidth(), y);
@@ -385,26 +456,29 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
     private void drawTable(Graphics2D g2, TableBox t, boolean hl) {
         int x = t.x, y = t.y, w = t.w, h = t.height();
 
-        g2.setColor(new Color(0, 0, 0, 80));
-        g2.fillRoundRect(x + 4, y + 4, w, h, 8, 8);
+        // Drop shadow
+        Color shadow = cCanvasBg().darker();
+        g2.setColor(new Color(shadow.getRed(), shadow.getGreen(), shadow.getBlue(), 60));
+        g2.fillRoundRect(x + 3, y + 3, w, h, 8, 8);
 
-        g2.setColor(C_TABLE_BG);
+        g2.setColor(cTableBg());
         g2.fillRoundRect(x, y, w, h, 8, 8);
 
-        g2.setColor(hl ? C_LINE_HL : C_BORDER);
+        g2.setColor(hl ? cLineHl() : cBorder());
         g2.setStroke(new BasicStroke(hl ? 2f : 1.2f));
         g2.drawRoundRect(x, y, w, h, 8, 8);
 
-        GradientPaint gp = new GradientPaint(x, y, C_HEADER_BG, x, y + HEADER_H, C_HEADER_BG.darker());
+        Color hdrBg = cHeaderBg();
+        GradientPaint gp = new GradientPaint(x, y, hdrBg, x, y + HEADER_H, hdrBg.darker());
         g2.setPaint(gp);
         g2.fillRoundRect(x, y, w, HEADER_H, 8, 8);
         g2.fillRect(x, y + HEADER_H / 2, w, HEADER_H / 2);
 
-        g2.setColor(C_HEADER_FG);
+        g2.setColor(cHeaderFg());
         g2.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         g2.drawString(t.name, x + PADDING, y + HEADER_H - 8);
 
-        g2.setColor(C_BORDER);
+        g2.setColor(cBorder());
         g2.setStroke(new BasicStroke(0.8f));
         g2.drawLine(x, y + HEADER_H, x + w, y + HEADER_H);
 
@@ -413,39 +487,51 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
         Font typFont = new Font(Font.MONOSPACED, Font.PLAIN, 10);
         int rowY = y + HEADER_H;
 
+        Color tableFg = cTableFg();
+        Color pkFg    = cPkFg();
+        Color fkFg    = cFkFg();
+
         for (ColInfo col : t.columns) {
-            g2.setColor(new Color(255, 255, 255, col.isPk ? 12 : 5));
+            Color rowTint = isDark(cCanvasBg())
+                    ? new Color(255, 255, 255, col.isPk ? 12 : 5)
+                    : new Color(0, 0, 0, col.isPk ? 8 : 3);
+            g2.setColor(rowTint);
             g2.fillRect(x + 1, rowY, w - 2, ROW_H);
 
             if (col.isPk) {
-                g2.setColor(C_PK_FG);
+                g2.setColor(pkFg);
                 g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 10));
                 g2.drawString("PK", x + PADDING, rowY + ROW_H - 5);
             } else if (col.isFk) {
-                g2.setColor(C_FK_FG);
+                g2.setColor(fkFg);
                 g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 10));
                 g2.drawString("FK", x + PADDING, rowY + ROW_H - 5);
             }
 
             g2.setFont(col.isPk ? pkFont : colFont);
-            g2.setColor(col.isPk ? C_PK_FG : col.isFk ? C_FK_FG : C_TABLE_FG);
+            g2.setColor(col.isPk ? pkFg : col.isFk ? fkFg : tableFg);
             g2.drawString(col.name, x + PADDING + 22, rowY + ROW_H - 5);
 
             if (col.type != null) {
                 g2.setFont(typFont);
-                g2.setColor(new Color(140, 140, 160));
+                Color muted = new Color(tableFg.getRed(), tableFg.getGreen(),
+                                        tableFg.getBlue(), 140);
+                g2.setColor(muted);
                 int tw = g2.getFontMetrics().stringWidth(col.type);
                 g2.drawString(col.type, x + w - tw - PADDING, rowY + ROW_H - 5);
             }
 
-            g2.setColor(new Color(255, 255, 255, 15));
+            Color divider = isDark(cCanvasBg())
+                    ? new Color(255, 255, 255, 15)
+                    : new Color(0, 0, 0, 15);
+            g2.setColor(divider);
             g2.setStroke(new BasicStroke(0.5f));
             g2.drawLine(x + 1, rowY + ROW_H, x + w - 1, rowY + ROW_H);
             rowY += ROW_H;
         }
 
         // Resize handle
-        g2.setColor(new Color(150, 180, 220, hl ? 180 : 80));
+        g2.setColor(new Color(cBorder().getRed(), cBorder().getGreen(), cBorder().getBlue(), hl ? 180 : 80));
         g2.setStroke(new BasicStroke(1f));
         for (int i = 1; i <= 3; i++) {
             int off = i * 3;
@@ -461,7 +547,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
         int x2 = fromRight ? to.x : to.x + to.w;
         int cx = (x1 + x2) / 2;
         CubicCurve2D curve = new CubicCurve2D.Double(x1, fromY, cx, fromY, cx, toY, x2, toY);
-        g2.setColor(hl ? C_LINE_HL : C_LINE);
+        g2.setColor(hl ? cLineHl() : cLine());
         g2.setStroke(new BasicStroke(hl ? 2f : 1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g2.draw(curve);
         drawCrowFoot(g2, x1, fromY, fromRight ? -1 : 1, hl);
@@ -469,7 +555,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
     }
 
     private void drawCrowFoot(Graphics2D g2, int x, int y, int dir, boolean hl) {
-        g2.setColor(hl ? C_LINE_HL : C_LINE);
+        g2.setColor(hl ? cLineHl() : cLine());
         g2.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         int d = dir * 10;
         g2.drawLine(x, y, x + d, y);
@@ -479,7 +565,7 @@ public class SchemaDiagramPanel extends JPanel implements Scrollable {
     }
 
     private void drawOneEnd(Graphics2D g2, int x, int y, int dir, boolean hl) {
-        g2.setColor(hl ? C_LINE_HL : C_LINE);
+        g2.setColor(hl ? cLineHl() : cLine());
         g2.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         int d = dir * 8;
         g2.drawLine(x, y, x + d, y);

@@ -1,10 +1,29 @@
 package com.dbexplorer.ui;
 
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+
+import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSeparator;
+import javax.swing.SwingConstants;
 
 /**
  * About dialog with product icon loaded from classpath and app details.
@@ -50,7 +69,7 @@ public class AboutDialog extends JDialog {
         taglineLabel.setForeground(new Color(60, 160, 120));
         taglineLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel versionLabel = new JLabel("Version 2.0.0");
+        JLabel versionLabel = new JLabel("Version 2.0.1");
         versionLabel.setFont(versionLabel.getFont().deriveFont(Font.PLAIN, 12f));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -110,27 +129,86 @@ public class AboutDialog extends JDialog {
     }
 
     /**
-     * Load the product icon from classpath. Returns a scaled 96x96 icon.
+     * Load the product icon from classpath. Returns a 96x96 rounded-square icon.
      */
     private ImageIcon loadIcon() {
         try (InputStream is = getClass().getResourceAsStream(ICON_PATH)) {
             if (is != null) {
                 BufferedImage img = ImageIO.read(is);
-                Image scaled = img.getScaledInstance(96, 96, Image.SCALE_SMOOTH);
-                return new ImageIcon(scaled);
+                return new ImageIcon(roundedSquare(img, 96, 20));
             }
         } catch (Exception ignored) {}
-        // Fallback: simple text icon
         return new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
     }
 
     /**
-     * Load the product icon as an Image (for window icon use).
+     * Load the product icon as an Image with rounded corners
+     * (for window icon and welcome panel use).
      */
     public static Image loadWindowIcon() {
         try (InputStream is = AboutDialog.class.getResourceAsStream(ICON_PATH)) {
-            if (is != null) return ImageIO.read(is);
+            if (is != null) return roundedSquare(ImageIO.read(is), 128, 24);
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /**
+     * Scales {@code src} to {@code size}×{@code size} and clips it to a
+     * rounded rectangle with corner radius {@code radius}.
+     *
+     * Uses progressive halving (each step ≤ 50% reduction) before the final
+     * bicubic step — this preserves far more edge detail than a single large
+     * downscale jump.
+     */
+    private static BufferedImage roundedSquare(BufferedImage src, int size, int radius) {
+        // Progressive halving until we're within 2× of the target
+        BufferedImage current = src;
+        while (current.getWidth() > size * 2 || current.getHeight() > size * 2) {
+            int hw = Math.max(size, current.getWidth()  / 2);
+            int hh = Math.max(size, current.getHeight() / 2);
+            BufferedImage half = new BufferedImage(hw, hh, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D gh = half.createGraphics();
+            gh.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            gh.setRenderingHint(RenderingHints.KEY_RENDERING,
+                    RenderingHints.VALUE_RENDER_QUALITY);
+            gh.drawImage(current, 0, 0, hw, hh, null);
+            gh.dispose();
+            current = half;
+        }
+
+        // Final step: bicubic to exact target size
+        BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D gs = scaled.createGraphics();
+        gs.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        gs.setRenderingHint(RenderingHints.KEY_RENDERING,
+                RenderingHints.VALUE_RENDER_QUALITY);
+        gs.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+        // Maintain aspect ratio — center in the square
+        int sw = current.getWidth(), sh = current.getHeight();
+        int dw, dh, dx, dy;
+        if (sw >= sh) {
+            dw = size; dh = size * sh / sw;
+            dx = 0;    dy = (size - dh) / 2;
+        } else {
+            dh = size; dw = size * sw / sh;
+            dy = 0;    dx = (size - dw) / 2;
+        }
+        gs.drawImage(current, dx, dy, dw, dh, null);
+        gs.dispose();
+
+        // Clip to rounded rectangle using alpha compositing
+        BufferedImage out = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(Color.WHITE);
+        g.fillRoundRect(0, 0, size, size, radius, radius);
+        g.setComposite(java.awt.AlphaComposite.SrcIn);
+        g.drawImage(scaled, 0, 0, null);
+        g.dispose();
+        return out;
     }
 }

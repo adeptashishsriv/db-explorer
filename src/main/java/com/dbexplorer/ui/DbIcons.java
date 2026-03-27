@@ -4,691 +4,497 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 
 /**
- * Programmatically rendered vector icons for the database tree.
- * All icons are drawn with Java2D so they look crisp at any DPI
- * and automatically adapt to light/dark themes.
+ * Clean Java2D icon set. Rules:
+ *  - Every icon painted at exactly its display size (no scaling pipeline)
+ *  - Max 2 colors per icon: one background fill + white symbol
+ *  - Thick strokes (2px minimum) — thin lines disappear at 16px
+ *  - Simple geometry only: rectangles, circles, lines, triangles
+ *  - Full AA + STROKE_NORMALIZE for pixel-snapped edges
  */
 public final class DbIcons {
 
     public static final int SIZE = 16;
+    public static final int TB   = 20;
 
-    // Cached icons
-    public static final Icon DATABASE_CONNECTED   = make(DbIcons::drawDatabaseConnected);
-    public static final Icon DATABASE_DISCONNECTED = make(DbIcons::drawDatabaseDisconnected);
-    public static final Icon DATABASE_DYNAMO       = make(DbIcons::drawDynamo);
-    public static final Icon DATABASE_SQLITE       = make(DbIcons::drawSQLite);
-    public static final Icon DATABASE_GENERIC      = make(DbIcons::drawGeneric);
-    public static final Icon SCHEMA                = make(DbIcons::drawSchema);
-    public static final Icon TABLE                 = make(DbIcons::drawTable);
-    public static final Icon VIEW                  = make(DbIcons::drawView);
-    public static final Icon FUNCTION              = make(DbIcons::drawFunction);
-    public static final Icon PROCEDURE             = make(DbIcons::drawProcedure);
-    public static final Icon INDEX                 = make(DbIcons::drawIndex);
-    public static final Icon SEQUENCE              = make(DbIcons::drawSequence);
-    public static final Icon COLUMN                = make(DbIcons::drawColumn);
-    public static final Icon FOLDER_OPEN           = make(DbIcons::drawFolderOpen);
-    public static final Icon FOLDER_CLOSED         = make(DbIcons::drawFolderClosed);
-    public static final Icon LOADING               = make(DbIcons::drawLoading);
+    // Palette — distinct, colorblind-safe
+    private static final Color C_BLUE   = new Color(0x1565C0);
+    private static final Color C_GREEN  = new Color(0x2E7D32);
+    private static final Color C_RED    = new Color(0xC62828);
+    private static final Color C_ORANGE = new Color(0xE65100);
+    private static final Color C_TEAL   = new Color(0x00695C);
+    private static final Color C_PURPLE = new Color(0x6A1B9A);
+    private static final Color C_AMBER  = new Color(0xF57F17);
+    private static final Color C_GREY   = new Color(0x546E7A);
+    private static final Color C_WHITE  = Color.WHITE;
 
-    // ── Toolbar icons (20 px) ─────────────────────────────────────────────────
-    public static final int TB = 20;
-    public static final Icon TB_ADD        = makeTb(DbIcons::tbAdd);
-    public static final Icon TB_DISCONNECT = makeTb(DbIcons::tbDisconnect);
-    public static final Icon TB_RUN        = makeTb(DbIcons::tbRun);
-    public static final Icon TB_NEW_TAB    = makeTb(DbIcons::tbNewTab);
-    public static final Icon TB_EXPLAIN    = makeTb(DbIcons::tbExplain);
-    public static final Icon TB_CLEAR      = makeTb(DbIcons::tbClear);
-    public static final Icon TB_ABOUT      = makeTb(DbIcons::tbAbout);
+    // ── Tree icons ────────────────────────────────────────────────────────────
+    public static final Icon DATABASE_CONNECTED    = px(SIZE, DbIcons::iDbOn);
+    public static final Icon DATABASE_DISCONNECTED = px(SIZE, DbIcons::iDbOff);
+    public static final Icon DATABASE_DYNAMO       = px(SIZE, DbIcons::iDynamo);
+    public static final Icon DATABASE_SQLITE       = px(SIZE, DbIcons::iSqlite);
+    public static final Icon DATABASE_GENERIC      = px(SIZE, DbIcons::iGeneric);
+    public static final Icon SCHEMA                = px(SIZE, DbIcons::iSchema);
+    public static final Icon TABLE                 = px(SIZE, DbIcons::iTable);
+    public static final Icon VIEW                  = px(SIZE, DbIcons::iView);
+    public static final Icon FUNCTION              = px(SIZE, DbIcons::iFunction);
+    public static final Icon PROCEDURE             = px(SIZE, DbIcons::iProcedure);
+    public static final Icon INDEX                 = px(SIZE, DbIcons::iIndex);
+    public static final Icon SEQUENCE              = px(SIZE, DbIcons::iSequence);
+    public static final Icon COLUMN                = px(SIZE, DbIcons::iColumn);
+    public static final Icon FOLDER_OPEN           = px(SIZE, DbIcons::iFolderOpen);
+    public static final Icon FOLDER_CLOSED         = px(SIZE, DbIcons::iFolderClosed);
+    public static final Icon LOADING               = px(SIZE, DbIcons::iLoading);
 
-    // ── Menu / dialog icons (16 px) ───────────────────────────────────────────
-    public static final Icon MENU_DDL      = make(DbIcons::menuDdl);
-    public static final Icon MENU_INSERT   = make(DbIcons::menuInsert);
-    public static final Icon MENU_UPDATE   = make(DbIcons::menuUpdate);
-    public static final Icon MENU_CSV      = make(DbIcons::menuCsv);
-    public static final Icon MENU_DIAGRAM  = make(DbIcons::menuDiagram);
-    public static final Icon MENU_VIEW_DATA= make(DbIcons::menuViewData);
-    public static final Icon MENU_COPY     = make(DbIcons::menuCopy);
-    public static final Icon MENU_SAVE     = make(DbIcons::menuSave);
-    public static final Icon MENU_EXPORT   = make(DbIcons::menuExport);
+    // ── Toolbar icons ─────────────────────────────────────────────────────────
+    public static final Icon TB_ADD        = px(TB, DbIcons::tbAdd);
+    public static final Icon TB_DISCONNECT = px(TB, DbIcons::tbDisconnect);
+    public static final Icon TB_RUN        = px(TB, DbIcons::tbRun);
+    public static final Icon TB_NEW_TAB    = px(TB, DbIcons::tbNewTab);
+    public static final Icon TB_EXPLAIN    = px(TB, DbIcons::tbExplain);
+    public static final Icon TB_CLEAR      = px(TB, DbIcons::tbClear);
+    public static final Icon TB_ABOUT      = px(TB, DbIcons::tbAbout);
+    public static final Icon TB_DASHBOARD  = px(TB, DbIcons::tbDashboard);
+
+    // ── Menu icons ────────────────────────────────────────────────────────────
+    public static final Icon MENU_DDL       = px(SIZE, DbIcons::mDdl);
+    public static final Icon MENU_INSERT    = px(SIZE, DbIcons::mInsert);
+    public static final Icon MENU_UPDATE    = px(SIZE, DbIcons::mUpdate);
+    public static final Icon MENU_CSV       = px(SIZE, DbIcons::mCsv);
+    public static final Icon MENU_DIAGRAM   = px(SIZE, DbIcons::mDiagram);
+    public static final Icon MENU_VIEW_DATA = px(SIZE, DbIcons::mViewData);
+    public static final Icon MENU_COPY      = px(SIZE, DbIcons::mCopy);
+    public static final Icon MENU_SAVE      = px(SIZE, DbIcons::mSave);
+    public static final Icon MENU_EXPORT    = px(SIZE, DbIcons::mExport);
 
     private DbIcons() {}
 
-    @FunctionalInterface
-    private interface Painter { void paint(Graphics2D g); }
+    @FunctionalInterface interface P { void draw(Graphics2D g, int s); }
 
-    private static Icon make(Painter p) {
-        BufferedImage img = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
+    /** Paint at exactly s×s — zero scaling, zero blur. */
+    private static Icon px(int s, P p) {
+        BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,   RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-        p.paint(g);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,    RenderingHints.VALUE_STROKE_NORMALIZE);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING,         RenderingHints.VALUE_RENDER_QUALITY);
+        p.draw(g, s);
         g.dispose();
         return new ImageIcon(img);
     }
 
-    private static Icon makeTb(Painter p) {
-        BufferedImage img = new BufferedImage(TB, TB, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,   RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-        p.paint(g);
-        g.dispose();
-        return new ImageIcon(img);
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Filled rounded rect background. */
+    static void bg(Graphics2D g, Color c, int s, int r) {
+        g.setColor(c);
+        g.fillRoundRect(1, 1, s-2, s-2, r, r);
     }
 
-    // ── Database cylinder (connected = green accent) ──────────────────────────
-    private static void drawDatabaseConnected(Graphics2D g) {
-        drawCylinder(g, new Color(41, 182, 246), new Color(2, 136, 209), new Color(100, 220, 100));
+    /** White stroke. */
+    static BasicStroke ws(float w) {
+        return new BasicStroke(w, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
     }
 
-    private static void drawDatabaseDisconnected(Graphics2D g) {
-        drawCylinder(g, new Color(120, 120, 130), new Color(80, 80, 90), new Color(180, 60, 60));
+    /** White square stroke (for grid lines). */
+    static BasicStroke ss(float w) {
+        return new BasicStroke(w, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);
     }
 
-    private static void drawCylinder(Graphics2D g, Color body, Color shadow, Color dot) {
-        int x = 1, y = 2, w = 14, h = 12;
-        int ry = 3; // ellipse y-radius for top/bottom caps
-
-        // Body gradient
-        GradientPaint gp = new GradientPaint(x, 0, body.brighter(), x + w, 0, shadow);
-        g.setPaint(gp);
-        g.fillRoundRect(x, y + ry, w, h - ry, 3, 3);
-
-        // Bottom cap ellipse
-        g.setColor(shadow);
-        g.fillOval(x, y + h - ry, w, ry * 2);
-
-        // Top cap ellipse
-        g.setColor(body.brighter());
-        g.fillOval(x, y, w, ry * 2);
-
-        // Horizontal lines on body (data rows feel)
-        g.setColor(new Color(255, 255, 255, 40));
-        g.setStroke(new BasicStroke(0.8f));
-        for (int ly = y + ry + 2; ly < y + h - 1; ly += 3) {
-            g.drawLine(x + 1, ly, x + w - 1, ly);
-        }
-
-        // Status dot (bottom-right)
+    // ── Database cylinder (shared) ────────────────────────────────────────────
+    static void cylinder(Graphics2D g, int s, Color fill, Color dot) {
+        int x=2, w=s-4, ey=2, eh=4, by=s-6;
+        // body
+        g.setColor(fill);
+        g.fillRect(x, ey+eh/2, w, by-ey-eh/2+eh/2);
+        // top ellipse
+        g.fillOval(x, ey, w, eh);
+        // bottom ellipse (darker)
+        g.setColor(fill.darker());
+        g.fillOval(x, by, w, eh);
+        // outline
+        g.setColor(new Color(0,0,0,60));
+        g.setStroke(ss(1f));
+        g.drawOval(x, ey, w, eh);
+        g.drawLine(x, ey+eh/2, x, by+eh/2);
+        g.drawLine(x+w, ey+eh/2, x+w, by+eh/2);
+        g.drawOval(x, by, w, eh);
+        // status dot
         g.setColor(dot);
-        g.fillOval(x + w - 4, y + h - 1, 5, 5);
-        g.setColor(dot.darker());
-        g.setStroke(new BasicStroke(0.7f));
-        g.drawOval(x + w - 4, y + h - 1, 5, 5);
+        g.fillOval(s-6, s-6, 5, 5);
+        g.setColor(C_WHITE);
+        g.setStroke(ss(1f));
+        g.drawOval(s-6, s-6, 5, 5);
     }
 
-    // ── SQLite (teal cylinder with file icon) ────────────────────────────────
-    private static void drawSQLite(Graphics2D g) {
-        drawCylinder(g, new Color(0, 188, 212), new Color(0, 131, 143), new Color(100, 220, 100));
-        // Small "S" overlay
-        g.setColor(new Color(255, 255, 255, 210));
-        g.setFont(new Font("SansSerif", Font.BOLD, 8));
-        g.drawString("S", 5, 10);
+    // ── Tree icon painters ────────────────────────────────────────────────────
+
+    static void iDbOn(Graphics2D g, int s)  { cylinder(g, s, C_BLUE,  C_GREEN); }
+    static void iDbOff(Graphics2D g, int s) { cylinder(g, s, C_GREY,  C_RED);   }
+    static void iSqlite(Graphics2D g, int s){ cylinder(g, s, C_TEAL,  C_GREEN); }
+    static void iGeneric(Graphics2D g, int s){ cylinder(g, s, C_GREY, C_AMBER); }
+
+    static void iDynamo(Graphics2D g, int s) {
+        cylinder(g, s, C_ORANGE, C_GREEN);
+        // lightning bolt
+        g.setColor(C_WHITE);
+        int[] bx = {9,6,8,5,10,8}, by = {2,8,8,14,7,7};
+        g.fillPolygon(bx, by, 6);
     }
 
-    // ── Generic JDBC (grey cylinder with "?" overlay) ────────────────────────
-    private static void drawGeneric(Graphics2D g) {
-        drawCylinder(g, new Color(120, 144, 156), new Color(84, 110, 122), new Color(100, 220, 100));
-        g.setColor(new Color(255, 255, 255, 210));
-        g.setFont(new Font("SansSerif", Font.BOLD, 9));
-        g.drawString("?", 5, 10);
+    static void iSchema(Graphics2D g, int s) {
+        // 3 stacked layers
+        int[] ys = {1, 6, 11};
+        Color[] cs = {new Color(0x1E88E5), new Color(0x1565C0), new Color(0x0D47A1)};
+        for (int i = 0; i < 3; i++) {
+            g.setColor(cs[i]);
+            g.fillRoundRect(1, ys[i], s-2, 4, 2, 2);
+        }
     }
 
-    // ── DynamoDB (orange lightning bolt) ─────────────────────────────────────
-    private static void drawDynamo(Graphics2D g) {        // Cylinder in orange
-        drawCylinder(g, new Color(255, 153, 0), new Color(200, 100, 0), new Color(100, 220, 100));
-        // Lightning bolt overlay
-        g.setColor(new Color(255, 255, 255, 200));
-        Path2D bolt = new Path2D.Float();
-        bolt.moveTo(9, 2);
-        bolt.lineTo(6, 8);
-        bolt.lineTo(8.5, 8);
-        bolt.lineTo(6, 14);
-        bolt.lineTo(10, 7.5);
-        bolt.lineTo(7.5, 7.5);
-        bolt.closePath();
-        g.fill(bolt);
+    static void iTable(Graphics2D g, int s) {
+        // header + 2 rows
+        g.setColor(C_BLUE);
+        g.fillRoundRect(1, 1, s-2, s-2, 2, 2);
+        g.setColor(new Color(0x1E88E5));
+        g.fillRoundRect(1, 1, s-2, 5, 2, 2);
+        g.fillRect(1, 3, s-2, 3);
+        // row fills
+        g.setColor(new Color(255,255,255,200));
+        g.fillRect(2, 7, s-3, 3);
+        g.setColor(new Color(255,255,255,120));
+        g.fillRect(2, 11, s-3, 3);
+        // grid
+        g.setColor(new Color(255,255,255,160));
+        g.setStroke(ss(1f));
+        g.drawLine(1, 6, s-1, 6);
+        g.drawLine(1, 10, s-1, 10);
+        g.drawLine(s/2, 6, s/2, s-1);
     }
 
-    // ── Schema (blueprint/layers) ─────────────────────────────────────────────
-    private static void drawSchema(Graphics2D g) {
-        Color c1 = new Color(100, 181, 246);
-        Color c2 = new Color(66, 165, 245);
-        Color c3 = new Color(30, 136, 229);
-
-        // Three stacked rounded rectangles (layers)
-        g.setColor(c3);
-        g.fillRoundRect(2, 10, 12, 4, 3, 3);
-        g.setColor(c2);
-        g.fillRoundRect(2, 6,  12, 4, 3, 3);
-        g.setColor(c1);
-        g.fillRoundRect(2, 2,  12, 4, 3, 3);
-
-        // Subtle borders
-        g.setStroke(new BasicStroke(0.6f));
-        g.setColor(new Color(0, 0, 0, 50));
-        g.drawRoundRect(2, 10, 12, 4, 3, 3);
-        g.drawRoundRect(2, 6,  12, 4, 3, 3);
-        g.drawRoundRect(2, 2,  12, 4, 3, 3);
+    static void iView(Graphics2D g, int s) {
+        bg(g, C_TEAL, s, 3);
+        // eye whites
+        g.setColor(C_WHITE);
+        int[] ex = {1, s/2, s-1, s/2};
+        int[] ey = {s/2, 3, s/2, s-3};
+        g.fillPolygon(ex, ey, 4);
+        // iris
+        g.setColor(C_TEAL.darker());
+        g.fillOval(s/2-3, s/2-3, 6, 6);
+        // pupil
+        g.setColor(new Color(0,0,60));
+        g.fillOval(s/2-2, s/2-2, 4, 4);
     }
 
-    // ── Table (grid) ──────────────────────────────────────────────────────────
-    private static void drawTable(Graphics2D g) {
-        Color header = new Color(66, 165, 245);
-        Color row1   = new Color(227, 242, 253);
-        Color row2   = new Color(187, 222, 251);
-        Color border = new Color(100, 160, 220);
-
-        // Header row
-        g.setColor(header);
-        g.fillRoundRect(1, 1, 14, 4, 2, 2);
-
-        // Data rows
-        g.setColor(row1);
-        g.fillRect(1, 5, 14, 3);
-        g.setColor(row2);
-        g.fillRect(1, 8, 14, 3);
-        g.setColor(row1);
-        g.fillRect(1, 11, 14, 3);
-
-        // Outer border
-        g.setColor(border);
-        g.setStroke(new BasicStroke(1f));
-        g.drawRoundRect(1, 1, 14, 13, 2, 2);
-
-        // Column divider
-        g.setColor(new Color(100, 160, 220, 120));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawLine(7, 1, 7, 14);
-
-        // Row dividers
-        g.drawLine(1, 5,  15, 5);
-        g.drawLine(1, 8,  15, 8);
-        g.drawLine(1, 11, 15, 11);
-    }
-
-    // ── View (eye over grid) ──────────────────────────────────────────────────
-    private static void drawView(Graphics2D g) {
-        // Faded table background
-        g.setColor(new Color(179, 229, 252, 160));
-        g.fillRoundRect(1, 5, 14, 10, 2, 2);
-        g.setColor(new Color(100, 181, 246, 100));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawRoundRect(1, 5, 14, 10, 2, 2);
-        g.drawLine(1, 9, 15, 9);
-        g.drawLine(7, 5, 7, 15);
-
-        // Eye shape
-        g.setColor(new Color(255, 255, 255, 220));
-        g.fillOval(2, 1, 12, 8);
-
-        Path2D eye = new Path2D.Float();
-        eye.moveTo(2, 5);
-        eye.quadTo(8, 0, 14, 5);
-        eye.quadTo(8, 10, 2, 5);
-        eye.closePath();
-        g.setColor(new Color(30, 136, 229));
-        g.fill(eye);
-
-        // Pupil
-        g.setColor(new Color(13, 71, 161));
-        g.fillOval(5, 3, 6, 5);
-        g.setColor(new Color(255, 255, 255, 180));
-        g.fillOval(6, 4, 2, 2);
-    }
-
-    // ── Function (ƒ symbol) ───────────────────────────────────────────────────
-    private static void drawFunction(Graphics2D g) {
-        g.setColor(new Color(171, 71, 188));
-        g.fillRoundRect(1, 1, 14, 14, 4, 4);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Serif", Font.BOLD | Font.ITALIC, 11));
+    static void iFunction(Graphics2D g, int s) {
+        bg(g, C_PURPLE, s, 3);
+        g.setColor(C_WHITE);
+        g.setFont(new Font("Serif", Font.BOLD|Font.ITALIC, s-4));
         FontMetrics fm = g.getFontMetrics();
-        String txt = "f";
-        int tx = (SIZE - fm.stringWidth(txt)) / 2;
-        int ty = (SIZE + fm.getAscent() - fm.getDescent()) / 2;
-        g.drawString(txt, tx, ty);
+        g.drawString("f", (s-fm.stringWidth("f"))/2, s-3);
     }
 
-    // ── Procedure (gear/cog) ──────────────────────────────────────────────────
-    private static void drawProcedure(Graphics2D g) {
-        g.setColor(new Color(255, 167, 38));
-        g.fillRoundRect(1, 1, 14, 14, 4, 4);
-
-        // Gear teeth
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(1.5f));
-        int cx = 8, cy = 8, r = 4;
-        for (int i = 0; i < 8; i++) {
-            double a = Math.toRadians(i * 45);
-            int x1 = (int)(cx + Math.cos(a) * (r - 1));
-            int y1 = (int)(cy + Math.sin(a) * (r - 1));
-            int x2 = (int)(cx + Math.cos(a) * (r + 2));
-            int y2 = (int)(cy + Math.sin(a) * (r + 2));
-            g.drawLine(x1, y1, x2, y2);
-        }
-        g.fillOval(cx - 2, cy - 2, 4, 4);
-    }
-
-    // ── Index (lightning bolt) ────────────────────────────────────────────────
-    private static void drawIndex(Graphics2D g) {
-        g.setColor(new Color(255, 213, 79));
-        g.fillRoundRect(1, 1, 14, 14, 4, 4);
-
-        g.setColor(new Color(100, 70, 0));
-        Path2D bolt = new Path2D.Float();
-        bolt.moveTo(10, 2);
-        bolt.lineTo(5,  8);
-        bolt.lineTo(8,  8);
-        bolt.lineTo(5, 14);
-        bolt.lineTo(11, 7);
-        bolt.lineTo(8,  7);
-        bolt.closePath();
-        g.fill(bolt);
-    }
-
-    // ── Sequence (123 counter) ────────────────────────────────────────────────
-    private static void drawSequence(Graphics2D g) {
-        g.setColor(new Color(38, 198, 218));
-        g.fillRoundRect(1, 1, 14, 14, 4, 4);
-
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 7));
-        g.drawString("1", 3, 7);
-        g.drawString("2", 3, 13);
-        g.setStroke(new BasicStroke(1f));
-        g.drawLine(8, 4, 13, 4);
-        g.drawLine(8, 10, 13, 10);
-    }
-
-    // ── Column (single row indicator) ────────────────────────────────────────
-    private static void drawColumn(Graphics2D g) {
-        g.setColor(new Color(144, 202, 249));
-        g.fillRect(1, 5, 14, 6);
-        g.setColor(new Color(66, 165, 245));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawRect(1, 5, 14, 6);
-        g.drawLine(6, 5, 6, 11);
-
-        // Small key icon for primary key feel
-        g.setColor(new Color(255, 193, 7));
-        g.fillOval(2, 6, 3, 3);
-        g.setStroke(new BasicStroke(1f));
-        g.drawLine(5, 8, 8, 8);
-        g.drawLine(7, 8, 7, 10);
-    }
-
-    // ── Folder closed ─────────────────────────────────────────────────────────
-    private static void drawFolderClosed(Graphics2D g) {
-        Color body = new Color(255, 202, 40);
-        Color tab  = new Color(255, 179, 0);
-
-        // Tab
-        g.setColor(tab);
-        g.fillRoundRect(1, 4, 6, 3, 2, 2);
-
-        // Body
-        g.setColor(body);
-        g.fillRoundRect(1, 6, 14, 9, 3, 3);
-
-        // Shine
-        g.setColor(new Color(255, 255, 255, 60));
-        g.fillRoundRect(2, 7, 12, 3, 2, 2);
-
-        // Border
-        g.setColor(new Color(180, 130, 0, 120));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawRoundRect(1, 6, 14, 9, 3, 3);
-    }
-
-    // ── Folder open ───────────────────────────────────────────────────────────
-    private static void drawFolderOpen(Graphics2D g) {
-        Color body = new Color(255, 213, 79);
-        Color tab  = new Color(255, 193, 7);
-
-        g.setColor(tab);
-        g.fillRoundRect(1, 4, 6, 3, 2, 2);
-
-        // Open folder body (trapezoid feel)
-        Path2D folder = new Path2D.Float();
-        folder.moveTo(1,  7);
-        folder.lineTo(15, 7);
-        folder.lineTo(13, 15);
-        folder.lineTo(1,  15);
-        folder.closePath();
-        g.setColor(body);
-        g.fill(folder);
-
-        g.setColor(new Color(255, 255, 255, 60));
-        g.fillRect(2, 8, 12, 3);
-
-        g.setColor(new Color(180, 130, 0, 120));
-        g.setStroke(new BasicStroke(0.8f));
-        g.draw(folder);
-    }
-
-    // ── Loading spinner (arc) ─────────────────────────────────────────────────
-    private static void drawLoading(Graphics2D g) {
-        g.setColor(new Color(150, 150, 150, 80));
-        g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawOval(2, 2, 12, 12);
-        g.setColor(new Color(66, 165, 245));
-        g.drawArc(2, 2, 12, 12, 90, -270);
-    }
-
-    // ── Toolbar painters (20 px canvas) ──────────────────────────────────────
-
-    /** Green "+" circle — Add Connection */
-    private static void tbAdd(Graphics2D g) {
-        g.setColor(new Color(56, 142, 60));
-        g.fillOval(1, 1, 18, 18);
-        g.setColor(new Color(200, 230, 200, 60));
-        g.fillOval(3, 3, 8, 6);
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(10, 5, 10, 15);
-        g.drawLine(5, 10, 15, 10);
-    }
-
-    /** Red circle with horizontal bar — Disconnect */
-    private static void tbDisconnect(Graphics2D g) {
-        g.setColor(new Color(198, 40, 40));
-        g.fillOval(1, 1, 18, 18);
-        g.setColor(new Color(255, 200, 200, 60));
-        g.fillOval(3, 3, 8, 6);
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        // Plug/unplug symbol: two lines with gap
-        g.drawLine(6, 7, 6, 13);
-        g.drawLine(14, 7, 14, 13);
-        g.drawLine(6, 7, 14, 7);
-        // Strike-through diagonal
-        g.setColor(new Color(255, 100, 100));
-        g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(5, 5, 15, 15);
-    }
-
-    /** Green play triangle — Run Query */
-    private static void tbRun(Graphics2D g) {
-        // Circle background
-        g.setColor(new Color(46, 125, 50));
-        g.fillOval(1, 1, 18, 18);
-        g.setColor(new Color(200, 255, 200, 50));
-        g.fillOval(3, 3, 8, 6);
-        // Triangle
-        g.setColor(Color.WHITE);
-        Path2D tri = new Path2D.Float();
-        tri.moveTo(7, 5);
-        tri.lineTo(7, 15);
-        tri.lineTo(16, 10);
-        tri.closePath();
-        g.fill(tri);
-    }
-
-    /** Blue document with "+" — New Tab */
-    private static void tbNewTab(Graphics2D g) {
-        // Page body
-        g.setColor(new Color(66, 165, 245));
-        g.fillRoundRect(3, 1, 11, 14, 2, 2);
-        // Folded corner
-        g.setColor(new Color(30, 100, 180));
-        Path2D corner = new Path2D.Float();
-        corner.moveTo(10, 1); corner.lineTo(14, 5); corner.lineTo(10, 5);
-        corner.closePath();
-        g.fill(corner);
-        // White lines (content)
-        g.setColor(new Color(255, 255, 255, 180));
-        g.setStroke(new BasicStroke(1f));
-        g.drawLine(5, 8,  11, 8);
-        g.drawLine(5, 10, 11, 10);
-        // Green "+" badge bottom-right
-        g.setColor(new Color(56, 142, 60));
-        g.fillOval(11, 12, 8, 8);
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(15, 14, 15, 18);
-        g.drawLine(13, 16, 17, 16);
-    }
-
-    /** Purple bar chart — Explain Plan */
-    private static void tbExplain(Graphics2D g) {
-        // Background rounded rect
-        g.setColor(new Color(74, 20, 140));
-        g.fillRoundRect(1, 1, 18, 18, 4, 4);
-        g.setColor(new Color(200, 150, 255, 40));
-        g.fillRoundRect(2, 2, 10, 6, 3, 3);
-        // Bars
-        int[] heights = {12, 8, 14, 6, 10};
-        Color[] barColors = {
-            new Color(206, 147, 216),
-            new Color(186, 104, 200),
-            new Color(171, 71, 188),
-            new Color(156, 39, 176),
-            new Color(123, 31, 162)
-        };
-        for (int i = 0; i < 5; i++) {
-            g.setColor(barColors[i]);
-            int bx = 2 + i * 3 + i / 2;
-            g.fillRoundRect(bx, 18 - heights[i], 3, heights[i] - 1, 1, 1);
+    static void iProcedure(Graphics2D g, int s) {
+        bg(g, C_ORANGE, s, 3);
+        // gear: circle + 6 teeth
+        g.setColor(C_WHITE);
+        g.setStroke(ws(2f));
+        int cx=s/2, cy=s/2, r=3;
+        g.drawOval(cx-r, cy-r, r*2, r*2);
+        for (int i=0; i<6; i++) {
+            double a = Math.toRadians(i*60);
+            g.drawLine((int)(cx+Math.cos(a)*r), (int)(cy+Math.sin(a)*r),
+                       (int)(cx+Math.cos(a)*(r+3)), (int)(cy+Math.sin(a)*(r+3)));
         }
     }
 
-    /** Red trash can — Clear */
-    private static void tbClear(Graphics2D g) {
-        g.setColor(new Color(183, 28, 28));
-        // Lid
-        g.fillRoundRect(4, 3, 12, 3, 2, 2);
-        g.fillRect(7, 1, 6, 3);
-        // Body
-        g.fillRoundRect(5, 6, 10, 12, 2, 2);
-        // Lines on body
-        g.setColor(new Color(255, 200, 200, 120));
-        g.setStroke(new BasicStroke(1f));
-        g.drawLine(8,  8, 8,  16);
-        g.drawLine(10, 8, 10, 16);
-        g.drawLine(12, 8, 12, 16);
+    static void iIndex(Graphics2D g, int s) {
+        bg(g, C_AMBER, s, 3);
+        g.setColor(new Color(0x4A3000));
+        // bold lightning
+        int[] bx={10,6,8,5,10,8}, by={2,8,8,s-2,7,7};
+        g.fillPolygon(bx, by, 6);
     }
 
-    /** Teal info circle — About */
-    private static void tbAbout(Graphics2D g) {
-        g.setColor(new Color(0, 131, 143));
-        g.fillOval(1, 1, 18, 18);
-        g.setColor(new Color(200, 255, 255, 50));
-        g.fillOval(3, 3, 8, 6);
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 13));
+    static void iSequence(Graphics2D g, int s) {
+        bg(g, C_TEAL, s, 3);
+        g.setColor(C_WHITE);
+        g.setFont(new Font("SansSerif", Font.BOLD, 6));
+        g.drawString("123", 2, s-3);
+    }
+
+    static void iColumn(Graphics2D g, int s) {
+        // single highlighted row
+        g.setColor(new Color(0xBBDEFB));
+        g.fillRoundRect(1, s/2-3, s-2, 6, 2, 2);
+        g.setColor(C_BLUE);
+        g.setStroke(ss(1.5f));
+        g.drawRoundRect(1, s/2-3, s-2, 6, 2, 2);
+        g.drawLine(s/2, s/2-3, s/2, s/2+3);
+        // key dot
+        g.setColor(C_AMBER);
+        g.fillOval(3, s/2-2, 4, 4);
+    }
+
+    static void iFolderClosed(Graphics2D g, int s) {
+        g.setColor(C_AMBER.darker());
+        g.fillRoundRect(1, 5, 6, 3, 2, 2);
+        g.setColor(C_AMBER);
+        g.fillRoundRect(1, 7, s-2, s-9, 2, 2);
+        g.setColor(new Color(0,0,0,40));
+        g.setStroke(ss(1f));
+        g.drawRoundRect(1, 7, s-2, s-9, 2, 2);
+    }
+
+    static void iFolderOpen(Graphics2D g, int s) {
+        g.setColor(C_AMBER.darker());
+        g.fillRoundRect(1, 4, 6, 3, 2, 2);
+        int[] px={1,s-1,s-3,1}, py={6,6,s-1,s-1};
+        g.setColor(C_AMBER);
+        g.fillPolygon(px, py, 4);
+        g.setColor(new Color(0,0,0,40));
+        g.setStroke(ss(1f));
+        g.drawPolygon(px, py, 4);
+    }
+
+    static void iLoading(Graphics2D g, int s) {
+        g.setColor(new Color(180,180,180,80));
+        g.setStroke(ws(2.5f));
+        g.drawOval(2, 2, s-4, s-4);
+        g.setColor(C_BLUE);
+        g.drawArc(2, 2, s-4, s-4, 90, -240);
+    }
+
+    // ── Toolbar painters ──────────────────────────────────────────────────────
+
+    static void tbAdd(Graphics2D g, int s) {
+        // green circle + white plus
+        g.setColor(C_GREEN);
+        g.fillOval(1, 1, s-2, s-2);
+        g.setColor(C_WHITE);
+        g.setStroke(ws(2.5f));
+        g.drawLine(s/2, 4, s/2, s-4);
+        g.drawLine(4, s/2, s-4, s/2);
+    }
+
+    static void tbDisconnect(Graphics2D g, int s) {
+        // red circle + white X
+        g.setColor(C_RED);
+        g.fillOval(1, 1, s-2, s-2);
+        g.setColor(C_WHITE);
+        g.setStroke(ws(2.5f));
+        g.drawLine(5, 5, s-5, s-5);
+        g.drawLine(s-5, 5, 5, s-5);
+    }
+
+    static void tbRun(Graphics2D g, int s) {
+        // green circle + white triangle
+        g.setColor(C_GREEN);
+        g.fillOval(1, 1, s-2, s-2);
+        g.setColor(C_WHITE);
+        int[] px={6,6,s-4}, py={4,s-4,s/2};
+        g.fillPolygon(px, py, 3);
+    }
+
+    static void tbNewTab(Graphics2D g, int s) {
+        // blue page
+        g.setColor(C_BLUE);
+        g.fillRoundRect(2, 1, s-6, s-2, 2, 2);
+        // folded corner
+        g.setColor(new Color(0x0D47A1));
+        g.fillPolygon(new int[]{s-6,s-2,s-6}, new int[]{1,5,5}, 3);
+        // white lines
+        g.setColor(C_WHITE);
+        g.setStroke(ss(1.5f));
+        g.drawLine(4, 8, s-8, 8);
+        g.drawLine(4, 11, s-8, 11);
+        // green + badge
+        g.setColor(C_GREEN);
+        g.fillOval(s-8, s-8, 8, 8);
+        g.setColor(C_WHITE);
+        g.setStroke(ws(1.5f));
+        g.drawLine(s-4, s-7, s-4, s-1);
+        g.drawLine(s-7, s-4, s-1, s-4);
+    }
+
+    static void tbExplain(Graphics2D g, int s) {
+        // purple bg + bar chart
+        bg(g, C_PURPLE, s, 3);
+        int[] hs={8,5,11,4,9};
+        Color[] cs={new Color(0xCE93D8),new Color(0xBA68C8),
+                    new Color(0xAB47BC),new Color(0x9C27B0),C_WHITE};
+        for (int i=0; i<5; i++) {
+            g.setColor(cs[i]);
+            g.fillRect(2+i*3+i/2, s-2-hs[i], 3, hs[i]);
+        }
+    }
+
+    static void tbClear(Graphics2D g, int s) {
+        // red trash
+        g.setColor(C_RED);
+        g.fillRoundRect(s/2-4, 1, 8, 3, 1, 1);  // handle
+        g.fillRoundRect(2, 4, s-4, 2, 1, 1);      // lid
+        g.fillRoundRect(3, 6, s-6, s-7, 2, 2);    // body
+        g.setColor(new Color(255,200,200,160));
+        g.setStroke(ss(1.5f));
+        g.drawLine(s/2-3, 8, s/2-3, s-3);
+        g.drawLine(s/2,   8, s/2,   s-3);
+        g.drawLine(s/2+3, 8, s/2+3, s-3);
+    }
+
+    static void tbAbout(Graphics2D g, int s) {
+        // teal circle + white i
+        g.setColor(C_TEAL);
+        g.fillOval(1, 1, s-2, s-2);
+        g.setColor(C_WHITE);
+        g.setFont(new Font("SansSerif", Font.BOLD, s-6));
         FontMetrics fm = g.getFontMetrics();
-        String t = "i";
-        g.drawString(t, (20 - fm.stringWidth(t)) / 2, 15);
+        g.drawString("i", (s-fm.stringWidth("i"))/2, s-3);
     }
 
-    // ── Menu / dialog icon painters (16 px) ──────────────────────────────────
+    static void tbDashboard(Graphics2D g, int s) {
+        // Blue bar-chart icon representing the health dashboard
+        g.setColor(C_BLUE);
+        int bw = (s - 6) / 3;
+        // Three bars of increasing height
+        g.fillRect(2,          s - 4,      bw, 3);
+        g.fillRect(2 + bw + 1, s - 8,      bw, 7);
+        g.fillRect(2 + bw*2+2, s - 13,     bw, 12);
+        // Horizontal baseline
+        g.setColor(C_GREY);
+        g.fillRect(1, s - 2, s - 2, 1);
+    }
 
-    /** Orange document with "DDL" — DDL export */
-    private static void menuDdl(Graphics2D g) {
-        g.setColor(new Color(230, 81, 0));
-        g.fillRoundRect(2, 1, 9, 12, 2, 2);
-        Path2D corner = new Path2D.Float();
-        corner.moveTo(8, 1); corner.lineTo(11, 4); corner.lineTo(8, 4);
-        corner.closePath();
-        g.setColor(new Color(180, 50, 0));
-        g.fill(corner);
-        g.setColor(new Color(255, 255, 255, 200));
+    // ── Menu icon painters ────────────────────────────────────────────────────
+
+    static void mDdl(Graphics2D g, int s) {
+        // orange doc
+        g.setColor(C_ORANGE);
+        g.fillRoundRect(1, 1, s-5, s-2, 2, 2);
+        g.setColor(C_ORANGE.darker());
+        g.fillPolygon(new int[]{s-5,s-1,s-5}, new int[]{1,5,5}, 3);
+        g.setColor(C_WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 5));
-        g.drawString("DDL", 3, 10);
-        // Green badge
-        g.setColor(new Color(56, 142, 60));
-        g.fillRoundRect(9, 9, 6, 6, 2, 2);
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(1.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(12, 10, 12, 14);
-        g.drawLine(10, 12, 14, 12);
+        g.drawString("DDL", 2, s-3);
     }
 
-    /** Green document with "+" rows — INSERT */
-    private static void menuInsert(Graphics2D g) {
-        g.setColor(new Color(46, 125, 50));
-        g.fillRoundRect(1, 1, 10, 14, 2, 2);
-        g.setColor(new Color(200, 230, 200, 180));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawLine(3, 5,  9, 5);
-        g.drawLine(3, 7,  9, 7);
-        g.drawLine(3, 9,  9, 9);
-        g.drawLine(3, 11, 9, 11);
-        // "+" badge
-        g.setColor(new Color(56, 142, 60));
-        g.fillOval(9, 9, 6, 6);
-        g.setColor(Color.WHITE);
-        g.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(12, 10, 12, 14);
-        g.drawLine(10, 12, 14, 12);
+    static void mInsert(Graphics2D g, int s) {
+        // green doc + plus
+        g.setColor(C_GREEN);
+        g.fillRoundRect(1, 1, s-5, s-2, 2, 2);
+        g.setColor(C_WHITE);
+        g.setStroke(ss(1.5f));
+        for (int y=4; y<=10; y+=3) g.drawLine(3, y, s-6, y);
+        g.setColor(C_GREEN);
+        g.fillOval(s-7, s-7, 7, 7);
+        g.setColor(C_WHITE);
+        g.setStroke(ws(1.5f));
+        g.drawLine(s-4, s-6, s-4, s-1);
+        g.drawLine(s-6, s-3, s-1, s-3);
     }
 
-    /** Blue document with pencil — UPDATE */
-    private static void menuUpdate(Graphics2D g) {
-        g.setColor(new Color(21, 101, 192));
-        g.fillRoundRect(1, 1, 10, 14, 2, 2);
-        g.setColor(new Color(200, 220, 255, 180));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawLine(3, 5,  9, 5);
-        g.drawLine(3, 7,  9, 7);
-        g.drawLine(3, 9,  7, 9);
-        // Pencil
-        g.setColor(new Color(255, 193, 7));
-        Path2D pencil = new Path2D.Float();
-        pencil.moveTo(10, 10); pencil.lineTo(14, 6);
-        pencil.lineTo(15, 7); pencil.lineTo(11, 11);
-        pencil.closePath();
-        g.fill(pencil);
-        g.setColor(new Color(180, 130, 0));
-        g.setStroke(new BasicStroke(0.6f));
-        g.draw(pencil);
-        g.setColor(new Color(255, 100, 100));
-        g.fillRect(10, 11, 3, 2);
+    static void mUpdate(Graphics2D g, int s) {
+        // blue doc + pencil
+        g.setColor(C_BLUE);
+        g.fillRoundRect(1, 1, s-5, s-2, 2, 2);
+        g.setColor(C_WHITE);
+        g.setStroke(ss(1.5f));
+        g.drawLine(3, 5, s-6, 5);
+        g.drawLine(3, 8, s-6, 8);
+        // amber pencil
+        g.setColor(C_AMBER);
+        g.fillPolygon(new int[]{s-6,s-2,s-3,s-7}, new int[]{s-6,s-10,s-9,s-5}, 4);
+        g.setColor(C_RED);
+        g.fillRect(s-7, s-5, 3, 2);
     }
 
-    /** Teal grid — CSV */
-    private static void menuCsv(Graphics2D g) {
-        // Sheet background
-        g.setColor(new Color(0, 137, 123));
-        g.fillRoundRect(1, 1, 14, 14, 2, 2);
-        // Grid lines
-        g.setColor(new Color(255, 255, 255, 80));
-        g.setStroke(new BasicStroke(0.7f));
-        g.drawLine(1, 5,  15, 5);
-        g.drawLine(1, 9,  15, 9);
-        g.drawLine(1, 13, 15, 13);
-        g.drawLine(5, 1,  5,  15);
-        g.drawLine(10, 1, 10, 15);
-        // "CSV" text
-        g.setColor(Color.WHITE);
+    static void mCsv(Graphics2D g, int s) {
+        // teal grid
+        bg(g, C_TEAL, s, 2);
+        g.setColor(new Color(255,255,255,100));
+        g.setStroke(ss(1f));
+        g.drawLine(1, s/3+1, s-1, s/3+1);
+        g.drawLine(1, s*2/3, s-1, s*2/3);
+        g.drawLine(s/3+1, 1, s/3+1, s-1);
+        g.drawLine(s*2/3, 1, s*2/3, s-1);
+        g.setColor(C_WHITE);
         g.setFont(new Font("SansSerif", Font.BOLD, 5));
-        g.drawString("CSV", 2, 8);
+        g.drawString("CSV", 2, s/2+2);
     }
 
-    /** Hexagon — Schema Diagram */
-    private static void menuDiagram(Graphics2D g) {
-        g.setColor(new Color(81, 45, 168));
-        Path2D hex = new Path2D.Float();
-        for (int i = 0; i < 6; i++) {
-            double a = Math.toRadians(60 * i - 30);
-            double x = 8 + 6.5 * Math.cos(a);
-            double y = 8 + 6.5 * Math.sin(a);
-            if (i == 0) hex.moveTo(x, y); else hex.lineTo(x, y);
-        }
-        hex.closePath();
-        g.fill(hex);
-        g.setColor(new Color(200, 180, 255, 60));
-        g.fillOval(4, 3, 6, 4);
-        // Nodes and lines inside
-        g.setColor(new Color(255, 255, 255, 180));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawLine(5, 8, 11, 8);
-        g.drawLine(8, 5, 8, 11);
-        g.fillOval(4, 7, 3, 3);
-        g.fillOval(10, 7, 3, 3);
-        g.fillOval(7, 4, 3, 3);
-        g.fillOval(7, 10, 3, 3);
+    static void mDiagram(Graphics2D g, int s) {
+        // violet bg + ER nodes
+        bg(g, C_PURPLE, s, 3);
+        g.setColor(C_WHITE);
+        g.setStroke(ws(1.5f));
+        g.drawLine(s/4, s/2, s*3/4, s/2);
+        g.drawLine(s/2, s/4, s/2, s*3/4);
+        g.setColor(C_AMBER);
+        int r=2;
+        g.fillOval(s/4-r, s/2-r, r*2+1, r*2+1);
+        g.fillOval(s*3/4-r, s/2-r, r*2+1, r*2+1);
+        g.fillOval(s/2-r, s/4-r, r*2+1, r*2+1);
+        g.fillOval(s/2-r, s*3/4-r, r*2+1, r*2+1);
     }
 
-    /** Eye over table rows — View Data */
-    private static void menuViewData(Graphics2D g) {
-        // Table rows
-        g.setColor(new Color(66, 165, 245, 160));
-        g.fillRoundRect(1, 8, 14, 7, 2, 2);
-        g.setColor(new Color(100, 181, 246, 100));
-        g.setStroke(new BasicStroke(0.6f));
-        g.drawLine(1, 11, 15, 11);
-        // Eye
-        g.setColor(new Color(255, 255, 255, 230));
-        Path2D eye = new Path2D.Float();
-        eye.moveTo(1, 5); eye.quadTo(8, 0, 15, 5); eye.quadTo(8, 10, 1, 5);
-        eye.closePath();
-        g.fill(eye);
-        g.setColor(new Color(30, 136, 229));
-        g.fill(eye);
-        g.setColor(new Color(13, 71, 161));
-        g.fillOval(5, 3, 6, 5);
-        g.setColor(new Color(255, 255, 255, 200));
-        g.fillOval(6, 4, 2, 2);
+    static void mViewData(Graphics2D g, int s) {
+        // blue table + eye
+        g.setColor(C_BLUE);
+        g.fillRoundRect(1, s/2, s-2, s/2-1, 2, 2);
+        g.setColor(C_WHITE);
+        g.setStroke(ss(1f));
+        g.drawLine(1, s*3/4, s-1, s*3/4);
+        // eye
+        g.setColor(C_WHITE);
+        int[] ex={1,s/2,s-1,s/2}, ey={s/3,2,s/3,s/2};
+        g.fillPolygon(ex, ey, 4);
+        g.setColor(C_TEAL);
+        g.fillOval(s/2-3, s/3-2, 6, 5);
+        g.setColor(new Color(0,0,60));
+        g.fillOval(s/2-2, s/3-1, 4, 3);
     }
 
-    /** Two overlapping pages — Copy */
-    private static void menuCopy(Graphics2D g) {
-        // Back page
-        g.setColor(new Color(144, 202, 249));
-        g.fillRoundRect(4, 4, 10, 11, 2, 2);
-        // Front page
-        g.setColor(new Color(25, 118, 210));
-        g.fillRoundRect(2, 1, 10, 11, 2, 2);
-        // Lines
-        g.setColor(new Color(255, 255, 255, 180));
-        g.setStroke(new BasicStroke(0.8f));
-        g.drawLine(4, 5, 10, 5);
-        g.drawLine(4, 7, 10, 7);
-        g.drawLine(4, 9, 8,  9);
+    static void mCopy(Graphics2D g, int s) {
+        // two overlapping pages
+        g.setColor(new Color(0x42A5F5));
+        g.fillRoundRect(4, 4, s-5, s-5, 2, 2);
+        g.setColor(C_BLUE);
+        g.fillRoundRect(1, 1, s-5, s-5, 2, 2);
+        g.setColor(C_WHITE);
+        g.setStroke(ss(1.5f));
+        g.drawLine(3, 5, s-6, 5);
+        g.drawLine(3, 8, s-6, 8);
+        g.drawLine(3, 11, s-8, 11);
     }
 
-    /** Floppy disk — Save */
-    private static void menuSave(Graphics2D g) {
-        // Body
-        g.setColor(new Color(69, 90, 100));
-        g.fillRoundRect(1, 1, 14, 14, 2, 2);
-        // Label area (white rectangle)
-        g.setColor(new Color(236, 239, 241));
-        g.fillRect(3, 1, 8, 6);
-        // Notch on label
-        g.setColor(new Color(120, 144, 156));
-        g.fillRect(8, 1, 3, 4);
-        // Bottom slot
-        g.setColor(new Color(120, 144, 156));
-        g.fillRoundRect(3, 9, 10, 5, 1, 1);
-        g.setColor(new Color(236, 239, 241));
-        g.fillRoundRect(4, 10, 8, 3, 1, 1);
+    static void mSave(Graphics2D g, int s) {
+        // floppy disk
+        bg(g, C_GREY, s, 2);
+        g.setColor(new Color(0xECEFF1));
+        g.fillRect(3, 1, s-7, 6);
+        g.setColor(C_GREY);
+        g.fillRect(s-6, 1, 3, 4);
+        g.setColor(new Color(0x78909C));
+        g.fillRoundRect(3, s-7, s-6, 5, 1, 1);
+        g.setColor(new Color(0xECEFF1));
+        g.fillRoundRect(4, s-6, s-8, 3, 1, 1);
     }
 
-    /** Arrow out of box — Export (submenu) */
-    private static void menuExport(Graphics2D g) {
-        // Box
-        g.setColor(new Color(38, 166, 154));
-        g.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawRoundRect(1, 6, 14, 9, 2, 2);
-        // Arrow up-right
-        g.setColor(new Color(38, 166, 154));
-        g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(8, 1, 8, 9);
-        g.drawLine(5, 4, 8, 1);
-        g.drawLine(11, 4, 8, 1);
+    static void mExport(Graphics2D g, int s) {
+        // teal box + up arrow
+        g.setColor(C_TEAL);
+        g.setStroke(ws(2f));
+        g.drawRoundRect(1, s/2, s-2, s/2-1, 2, 2);
+        g.drawLine(s/2, 1, s/2, s/2+1);
+        g.drawLine(s/4, s/4, s/2, 1);
+        g.drawLine(s*3/4, s/4, s/2, 1);
     }
 }
