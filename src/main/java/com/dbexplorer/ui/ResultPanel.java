@@ -293,9 +293,14 @@ public class ResultPanel extends JPanel {
     private void updateStatusLabel() {
         if (currentLazyResult == null) return;
         int count = currentLazyResult.getFetchedRowCount();
-        String suffix = currentLazyResult.isExhausted()
-                ? " (all rows loaded)"
-                : " (scroll down for more)";
+        String suffix;
+        if (currentLazyResult.isTruncated()) {
+            suffix = " (truncated at " + LazyQueryResult.MAX_ROWS + " rows for memory safety)";
+        } else if (currentLazyResult.isExhausted()) {
+            suffix = " (all rows loaded)";
+        } else {
+            suffix = " (scroll down for more)";
+        }
         statusLabel.setText(count + " row(s) loaded in "
                 + currentLazyResult.getExecutionTimeMs() + " ms" + suffix);
     }

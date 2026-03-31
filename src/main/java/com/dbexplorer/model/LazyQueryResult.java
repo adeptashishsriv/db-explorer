@@ -1,5 +1,6 @@
 package com.dbexplorer.model;
 
+import java.io.InputStream;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -22,7 +23,37 @@ import java.util.List;
  */
 public class LazyQueryResult implements AutoCloseable {
 
-    public static final int DEFAULT_FETCH_SIZE = 500;
+    public static final int DEFAULT_FETCH_SIZE = loadFetchSize();
+    public static final int MAX_ROWS = loadMaxRows();
+
+    /** Reads a property from the filtered app.properties resource. Falls back to the given default. */
+    private static String loadAppProperty(String key, String fallback) {
+        try (InputStream is = LazyQueryResult.class.getResourceAsStream("/app.properties")) {
+            if (is != null) {
+                java.util.Properties props = new java.util.Properties();
+                props.load(is);
+                String v = props.getProperty(key);
+                if (v != null && !v.isBlank()) return v;
+            }
+        } catch (Exception ignored) {}
+        return fallback;
+    }
+
+    private static int loadMaxRows() {
+        try {
+            return Integer.parseInt(loadAppProperty("query.max.rows", "10000"));
+        } catch (NumberFormatException e) {
+            return 10000;
+        }
+    }
+
+    private static int loadFetchSize() {
+        try {
+            return Integer.parseInt(loadAppProperty("query.fetch.size", "500"));
+        } catch (NumberFormatException e) {
+            return 500;
+        }
+    }
 
     private final List<String>   columns;
     private final int[]          columnTypes;   // java.sql.Types values
@@ -42,6 +73,7 @@ public class LazyQueryResult implements AutoCloseable {
     private final int[]  maxColWidth;
 
     private boolean exhausted = false;
+    private boolean truncated = false;
 
     public LazyQueryResult(Statement statement, ResultSet resultSet, long executionTimeMs)
             throws SQLException {
@@ -69,6 +101,7 @@ public class LazyQueryResult implements AutoCloseable {
     public int[]         getColumnTypes()      { return columnTypes; }
     public long          getExecutionTimeMs()  { return executionTimeMs; }
     public boolean       isExhausted()         { return exhausted; }
+    public boolean       isTruncated()         { return truncated; }
     public int           getFetchedRowCount()  { return fetchedRowCount; }
     public int[]         getMaxColWidths()     { return maxColWidth; }
 
@@ -86,14 +119,15 @@ public class LazyQueryResult implements AutoCloseable {
      * Fetch the next page of rows (up to fetchSize).
      * Returns only the newly fetched rows.
      * Called on a background thread — never on the EDT.
+     * Stops if total fetched rows would exceed MAX_ROWS to prevent memory issues.
      */
     public List<String[]> fetchNextPage(int fetchSize) throws SQLException {
-        if (exhausted) return List.of();
+        if (exhausted || fetchedRowCount >= MAX_ROWS) return List.of();
 
-        List<String[]> page = new ArrayList<>(fetchSize);
+        List<String[]> page = new ArrayList<>(Math.min(fetchSize, MAX_ROWS - fetchedRowCount));
         int count = 0;
 
-        while (count < fetchSize && resultSet.next()) {
+        while (count < fetchSize && resultSet.next() && fetchedRowCount + count < MAX_ROWS) {
             String[] row = new String[columnCount];
             for (int i = 1; i <= columnCount; i++) {
                 String val = resultSet.getString(i);
@@ -107,8 +141,9 @@ public class LazyQueryResult implements AutoCloseable {
             count++;
         }
 
-        if (count < fetchSize) exhausted = true;
+        if (count < fetchSize || fetchedRowCount + page.size() >= MAX_ROWS) exhausted = true;
         fetchedRowCount += page.size();
+        if (fetchedRowCount >= MAX_ROWS) truncated = true;
         if (firstPage == null) firstPage = page; // store only the first page
         return page;
     }

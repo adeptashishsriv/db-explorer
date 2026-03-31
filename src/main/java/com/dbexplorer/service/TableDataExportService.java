@@ -23,8 +23,29 @@ import java.util.List;
  */
 public class TableDataExportService {
 
-    public static final int FETCH_SIZE   = 500;
+    public static final int FETCH_SIZE   = loadFetchSize();
     public static final int PREVIEW_ROWS = 200;   // lines shown in the text area
+
+    /** Reads a property from the filtered app.properties resource. Falls back to the given default. */
+    private static String loadAppProperty(String key, String fallback) {
+        try (InputStream is = TableDataExportService.class.getResourceAsStream("/app.properties")) {
+            if (is != null) {
+                java.util.Properties props = new java.util.Properties();
+                props.load(is);
+                String v = props.getProperty(key);
+                if (v != null && !v.isBlank()) return v;
+            }
+        } catch (Exception ignored) {}
+        return fallback;
+    }
+
+    private static int loadFetchSize() {
+        try {
+            return Integer.parseInt(loadAppProperty("export.fetch.size", "500"));
+        } catch (NumberFormatException e) {
+            return 500;
+        }
+    }
 
     // ── DDL ───────────────────────────────────────────────────────────────────
 
