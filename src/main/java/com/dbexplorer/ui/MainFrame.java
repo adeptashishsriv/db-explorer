@@ -51,6 +51,7 @@ public class MainFrame extends JFrame {
 
     // Heap indicator in status bar
     private final JLabel heapLabel = new JLabel();
+    private JButton gcButton;
     private javax.swing.Timer heapTimer;
 
     private JButton newTabBtn;
@@ -130,7 +131,39 @@ public class MainFrame extends JFrame {
         heapLabel.setFont(heapLabel.getFont().deriveFont(Font.PLAIN, 11f));
         heapLabel.setToolTipText("JVM Heap: used / committed / max");
         updateHeapLabel();
-        statusBar.add(heapLabel, BorderLayout.EAST);
+        
+        // Garbage collection button — next to heap label
+        gcButton = new JButton("🗑");
+        gcButton.setFont(gcButton.getFont().deriveFont(Font.PLAIN, 10f));
+        gcButton.setToolTipText("Force Garbage Collection");
+        gcButton.setFocusable(false);
+        gcButton.setBorderPainted(false);
+        gcButton.setContentAreaFilled(false);
+        gcButton.setOpaque(false);
+        gcButton.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        gcButton.setMargin(new java.awt.Insets(0, 4, 0, 4));
+        gcButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                gcButton.setContentAreaFilled(true);
+                gcButton.setOpaque(true);
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                gcButton.setContentAreaFilled(false);
+                gcButton.setOpaque(false);
+            }
+        });
+        gcButton.addActionListener(e -> {
+            System.gc();
+            updateHeapLabel();
+            logPanel.logInfo("Garbage collection requested.");
+        });
+        
+        // Create a panel for the right side with heap label and GC button
+        JPanel rightPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 4, 0));
+        rightPanel.setOpaque(false);
+        rightPanel.add(gcButton);
+        rightPanel.add(heapLabel);
+        statusBar.add(rightPanel, BorderLayout.EAST);
 
         add(mainSplit, BorderLayout.CENTER);
         add(statusBar, BorderLayout.SOUTH);

@@ -158,4 +158,15 @@ public class LazyQueryResult implements AutoCloseable {
         try { resultSet.close(); } catch (Exception ignored) {}
         try { statement.close(); } catch (Exception ignored) {}
     }
+
+    /**
+     * Clears internal data structures to aid garbage collection.
+     * Call this when done with the result and before dropping references.
+     */
+    public void clearData() {
+        if (firstPage != null) {
+            firstPage.clear();
+            firstPage = null;
+        }
+    }
 }

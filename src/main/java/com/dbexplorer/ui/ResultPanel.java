@@ -225,6 +225,20 @@ public class ResultPanel extends JPanel {
         });
     }
 
+    /**
+     * Forcefully clears all accumulated data structures to aid garbage collection.
+     * Use this when running large queries in sequence or to prevent memory buildup.
+     */
+    public void forceGarbageCollection() {
+        closeLazyResult();
+        SwingUtilities.invokeLater(() -> {
+            tableModel.resetSort();
+            tableModel.setRowCount(0);
+            tableModel.setColumnCount(0);
+            columnWidthsApplied = false;
+        });
+    }
+
     // ── Scroll-triggered lazy fetch ───────────────────────────────────────────
 
     private void onScroll(AdjustmentEvent e) {
@@ -307,6 +321,7 @@ public class ResultPanel extends JPanel {
 
     private void closeLazyResult() {
         if (currentLazyResult != null) {
+            currentLazyResult.clearData();  // Clear internal structures to aid GC
             currentLazyResult.close();
             currentLazyResult = null;
         }
