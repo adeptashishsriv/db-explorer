@@ -14,6 +14,7 @@ import java.util.function.Consumer;
 import javax.swing.BorderFactory;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -239,7 +240,24 @@ public class ConnectionListPanel extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     ConnectionInfo info = getSelectedConnection();
-                    if (info != null && onConnect != null) onConnect.accept(info);
+                    if (info != null && onConnect != null) {
+                        // If already connected, show confirmation before disconnecting
+                        if (connectionManager.isConnected(info.getId())) {
+                            int confirm = JOptionPane.showConfirmDialog(
+                                    ConnectionListPanel.this,
+                                    "<html>Disconnect from <b>" + info.getName() + "</b>?<br/>" +
+                                    "<small>Open query tabs will remain bound to this connection.</small></html>",
+                                    "Confirm Disconnect",
+                                    JOptionPane.YES_NO_OPTION,
+                                    JOptionPane.QUESTION_MESSAGE);
+                            if (confirm == JOptionPane.YES_OPTION) {
+                                onConnect.accept(info);
+                            }
+                        } else {
+                            // If not connected, just connect without confirmation
+                            onConnect.accept(info);
+                        }
+                    }
                 }
             }
         });
