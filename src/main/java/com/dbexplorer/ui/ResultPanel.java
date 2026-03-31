@@ -15,7 +15,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 
 import com.dbexplorer.model.LazyQueryResult;
@@ -43,7 +42,7 @@ public class ResultPanel extends JPanel {
     private static final int COL_MAX = 400;
 
     private final JTable          table;
-    private final DefaultTableModel tableModel;
+    private final SortableTableModel tableModel;
     private final JLabel          statusLabel;
     private final JScrollPane     scrollPane;
     private final JProgressBar    progressBar;
@@ -55,14 +54,28 @@ public class ResultPanel extends JPanel {
     public ResultPanel() {
         super(new BorderLayout());
 
-        tableModel = new DefaultTableModel() {
-            @Override public boolean isCellEditable(int row, int col) { return false; }
-        };
+        tableModel = new SortableTableModel();
 
         table = new JTable(tableModel);
         table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         table.setFillsViewportHeight(true);
         table.getTableHeader().setReorderingAllowed(true);
+
+        // Install sort indicator as the default header renderer so it survives
+        // fireTableStructureChanged() rebuilding the column model.
+        table.getTableHeader().setDefaultRenderer(
+                new SortIndicatorHeaderRenderer(tableModel, table.getTableHeader().getDefaultRenderer()));
+
+        table.getTableHeader().addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int col = table.columnAtPoint(e.getPoint());
+                if (col >= 0) {
+                    tableModel.cycleSort(col);
+                    table.getTableHeader().repaint();
+                }
+            }
+        });
         // Faster rendering — skip individual cell focus borders
         table.setShowGrid(true);
         table.setIntercellSpacing(new Dimension(1, 0));
@@ -118,9 +131,12 @@ public class ResultPanel extends JPanel {
         int[] colWidths = lazyResult.getMaxColWidths().clone();
 
         SwingUtilities.invokeLater(() -> {
-            tableModel.setRowCount(0);
-            tableModel.setColumnCount(0);
-            for (String col : lazyResult.getColumns()) tableModel.addColumn(col);
+            tableModel.resetSort();
+            ColumnType[] columnTypes = new ColumnType[lazyResult.getColumnTypes().length];
+            for (int i = 0; i < lazyResult.getColumnTypes().length; i++) {
+                columnTypes[i] = ColumnType.fromSqlType(lazyResult.getColumnTypes()[i]);
+            }
+            tableModel.initColumns(lazyResult.getColumns(), columnTypes);
             appendPageToTable(firstPage);
             applyColumnWidths(colWidths);
             updateStatusLabel();
@@ -138,9 +154,12 @@ public class ResultPanel extends JPanel {
         int[] colWidths = lazyResult.getMaxColWidths().clone();
 
         SwingUtilities.invokeLater(() -> {
-            tableModel.setRowCount(0);
-            tableModel.setColumnCount(0);
-            for (String col : lazyResult.getColumns()) tableModel.addColumn(col);
+            tableModel.resetSort();
+            ColumnType[] columnTypes = new ColumnType[lazyResult.getColumnTypes().length];
+            for (int i = 0; i < lazyResult.getColumnTypes().length; i++) {
+                columnTypes[i] = ColumnType.fromSqlType(lazyResult.getColumnTypes()[i]);
+            }
+            tableModel.initColumns(lazyResult.getColumns(), columnTypes);
             appendPageToTable(firstPage);
             applyColumnWidths(colWidths);
             updateStatusLabel();
@@ -150,9 +169,10 @@ public class ResultPanel extends JPanel {
     public void displayDynamoResult(List<String> columns, List<List<Object>> rows, long timeMs) {
         closeLazyResult();
         SwingUtilities.invokeLater(() -> {
-            tableModel.setRowCount(0);
-            tableModel.setColumnCount(0);
-            for (String col : columns) tableModel.addColumn(col);
+            tableModel.resetSort();
+            ColumnType[] allTextTypes = new ColumnType[columns.size()];
+            for (int i = 0; i < allTextTypes.length; i++) allTextTypes[i] = ColumnType.TEXT;
+            tableModel.initColumns(columns, allTextTypes);
 
             // Batch insert — suppress events, then fire one dataChanged
             tableModel.setRowCount(rows.size());
@@ -170,6 +190,7 @@ public class ResultPanel extends JPanel {
     public void displayResult(QueryResult result) {
         closeLazyResult();
         SwingUtilities.invokeLater(() -> {
+            tableModel.resetSort();
             tableModel.setRowCount(0);
             tableModel.setColumnCount(0);
             statusLabel.setForeground(UIManager.getColor("Label.foreground"));
@@ -181,6 +202,7 @@ public class ResultPanel extends JPanel {
     public void displayError(String title, String detail) {
         closeLazyResult();
         SwingUtilities.invokeLater(() -> {
+            tableModel.resetSort();
             tableModel.setRowCount(0);
             tableModel.setColumnCount(0);
             tableModel.addColumn("Error");
@@ -195,6 +217,7 @@ public class ResultPanel extends JPanel {
     public void clear() {
         closeLazyResult();
         SwingUtilities.invokeLater(() -> {
+            tableModel.resetSort();
             tableModel.setRowCount(0);
             tableModel.setColumnCount(0);
             statusLabel.setForeground(UIManager.getColor("Label.foreground"));
@@ -236,22 +259,12 @@ public class ResultPanel extends JPanel {
         );
     }
 
-    // Max rows to keep in the table model at once — prevents OOM on huge result sets
-    private static final int MAX_TABLE_ROWS = 10_000;
-
     /**
      * Batch-insert a page of String[] rows into the table model.
-     * Fires a single tableRowsInserted event for the whole batch instead of
-     * one event per row — dramatically faster for 500-row pages.
-     * Trims oldest rows if the total exceeds MAX_TABLE_ROWS.
      */
     private void appendPageToTable(List<String[]> page) {
         if (page.isEmpty()) return;
-        for (String[] row : page) tableModel.addRow(row);
-        // Trim from the top if we exceed the cap
-        while (tableModel.getRowCount() > MAX_TABLE_ROWS) {
-            tableModel.removeRow(0);
-        }
+        tableModel.appendRows(page);
     }
 
     /**

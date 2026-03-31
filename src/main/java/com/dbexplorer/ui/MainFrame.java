@@ -561,10 +561,13 @@ public class MainFrame extends JFrame {
     }
 
     private void disconnectSelectedConnection() {
-        // Disconnect the connection that the active tab is bound to
-        ConnectionInfo tabConn = sqlEditorPanel.getActiveTabConnection();
+        // Prefer the connection selected in the tree; fall back to the active tab's connection
+        ConnectionInfo tabConn = connectionListPanel.getSelectedConnection();
         if (tabConn == null) {
-            logPanel.logInfo("Current tab has no connection.");
+            tabConn = sqlEditorPanel.getActiveTabConnection();
+        }
+        if (tabConn == null) {
+            logPanel.logInfo("No connection selected.");
             return;
         }
         if (!connectionManager.isConnected(tabConn.getId())) {

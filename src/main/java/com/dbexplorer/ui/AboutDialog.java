@@ -32,6 +32,27 @@ public class AboutDialog extends JDialog {
 
     private static final String ICON_PATH = "/icons/db-explorer-icon.png";
 
+    /** Reads a property from the filtered app.properties resource. Falls back to the given default. */
+    private static String loadAppProperty(String key, String fallback) {
+        try (InputStream is = AboutDialog.class.getResourceAsStream("/app.properties")) {
+            if (is != null) {
+                java.util.Properties props = new java.util.Properties();
+                props.load(is);
+                String v = props.getProperty(key);
+                if (v != null && !v.isBlank()) return v;
+            }
+        } catch (Exception ignored) {}
+        return fallback;
+    }
+
+    private static String loadVersion() {
+        return loadAppProperty("app.version", "Unknown");
+    }
+
+    private static String loadBuildDate() {
+        return loadAppProperty("app.build.date", "Unknown");
+    }
+
     public AboutDialog(Frame owner) {
         super(owner, "About DB Explorer", true);
         setResizable(false);
@@ -69,11 +90,11 @@ public class AboutDialog extends JDialog {
         taglineLabel.setForeground(new Color(60, 160, 120));
         taglineLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel versionLabel = new JLabel("Version 2.0.1");
+        JLabel versionLabel = new JLabel("Version " + loadVersion());
         versionLabel.setFont(versionLabel.getFont().deriveFont(Font.PLAIN, 12f));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel releaseLabel = new JLabel("Release Date: March 24, 2026");
+        JLabel releaseLabel = new JLabel("Release Date: " + loadBuildDate());
         releaseLabel.setFont(releaseLabel.getFont().deriveFont(Font.PLAIN, 11f));
         releaseLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 

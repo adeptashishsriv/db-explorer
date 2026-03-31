@@ -1,5 +1,8 @@
 # Maven build output
 target/
+dist/
+dist-no-jvm/
+dist-with-jvm/
 dependency-reduced-pom.xml
 
 # IDE files
@@ -12,6 +15,7 @@ dependency-reduced-pom.xml
 # OS
 .DS_Store
 Thumbs.db
+.jqwik-database
 
 # Logs
 *.log

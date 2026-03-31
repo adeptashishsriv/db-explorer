@@ -66,6 +66,7 @@ public class LazyQueryResult implements AutoCloseable {
     }
 
     public List<String>  getColumns()         { return columns; }
+    public int[]         getColumnTypes()      { return columnTypes; }
     public long          getExecutionTimeMs()  { return executionTimeMs; }
     public boolean       isExhausted()         { return exhausted; }
     public int           getFetchedRowCount()  { return fetchedRowCount; }
