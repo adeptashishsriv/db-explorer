@@ -44,6 +44,7 @@ public final class DbIcons {
     public static final Icon SCHEMA                = px(SIZE, DbIcons::iSchema);
     public static final Icon TABLE                 = px(SIZE, DbIcons::iTable);
     public static final Icon VIEW                  = px(SIZE, DbIcons::iView);
+    public static final Icon MAT_VIEW              = px(SIZE, DbIcons::iMatView);
     public static final Icon FUNCTION              = px(SIZE, DbIcons::iFunction);
     public static final Icon PROCEDURE             = px(SIZE, DbIcons::iProcedure);
     public static final Icon INDEX                 = px(SIZE, DbIcons::iIndex);
@@ -193,6 +194,26 @@ public final class DbIcons {
         // pupil
         g.setColor(new Color(0,0,60));
         g.fillOval(s/2-2, s/2-2, 4, 4);
+    }
+
+    static void iMatView(Graphics2D g, int s) {
+        bg(g, C_TEAL, s, 3);
+        // eye diamond (same as iView)
+        g.setColor(C_WHITE);
+        int[] ex = {1, s/2, s-1, s/2};
+        int[] ey = {s/2-2, 2, s/2-2, s/2+2};
+        g.fillPolygon(ex, ey, 4);
+        // iris
+        g.setColor(C_TEAL.darker());
+        g.fillOval(s/2-2, s/2-4, 5, 5);
+        // pupil
+        g.setColor(new Color(0, 0, 60));
+        g.fillOval(s/2-1, s/2-3, 3, 3);
+        // two stacked rectangles below the eye (cached storage indicator)
+        g.setColor(C_WHITE);
+        g.fillRoundRect(2, s/2+3, s-4, 3, 1, 1);
+        g.setColor(new Color(255, 255, 255, 160));
+        g.fillRoundRect(2, s/2+7, s-4, 3, 1, 1);
     }
 
     static void iFunction(Graphics2D g, int s) {

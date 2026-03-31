@@ -29,6 +29,7 @@ import com.dbexplorer.model.DatabaseType;
 import com.dbexplorer.model.LazyQueryResult;
 import com.dbexplorer.model.QueryResult;
 import com.dbexplorer.service.ConnectionManager;
+import com.dbexplorer.service.DdlExportService;
 import com.dbexplorer.service.DynamoDbExecutor;
 import com.dbexplorer.service.QueryExecutor;
 public class MainFrame extends JFrame {
@@ -478,6 +479,20 @@ public class MainFrame extends JFrame {
         String action   = parts[0];
         String schema   = parts.length > 1 ? parts[1] : null;
         String table    = parts.length > 2 ? parts[2] : parts[1];
+
+        if ("MAT_VIEW_DDL".equals(action)) {
+            String matSchema = schema;
+            String matName   = table;
+            DatabaseType dbType = info.getDbType();
+            String title = "DDL Export — " + info.getName()
+                    + (matSchema != null ? " / " + matSchema + "." + matName : " / " + matName);
+            String fileName = (matSchema != null ? matSchema + "_" : "") + matName + "_ddl";
+            DdlExportService svc = new DdlExportService();
+            new DdlExportDialog(this, title, fileName,
+                    (java.util.concurrent.Callable<String>) () -> svc.exportMatViewDdl(conn, dbType, matSchema, matName))
+                    .setVisible(true);
+            return;
+        }
 
         TableExportDialog dlg = new TableExportDialog(this, info, conn, schema, table);
         // Select the right tab based on action

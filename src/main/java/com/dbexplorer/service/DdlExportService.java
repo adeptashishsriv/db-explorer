@@ -1,10 +1,15 @@
 package com.dbexplorer.service;
 
-import com.dbexplorer.model.DatabaseType;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.dbexplorer.model.DatabaseType;
 
 /**
  * Generates CREATE TABLE DDL for every table in a schema.
@@ -301,6 +306,70 @@ public class DdlExportService {
         if (nullable == DatabaseMetaData.columnNoNulls) col.append(" NOT NULL");
 
         return col.toString();
+    }
+
+    // ── Materialized View DDL ─────────────────────────────────────────────────
+
+    /**
+     * Generates a CREATE MATERIALIZED VIEW DDL string for the named object.
+     * Falls back to a comment if DDL cannot be retrieved.
+     */
+    public String exportMatViewDdl(Connection conn, DatabaseType dbType,
+                                    String schema, String name) throws SQLException {
+        return switch (dbType) {
+            case POSTGRESQL -> pgMatViewDdl(conn, schema, name);
+            case ORACLE     -> oracleMatViewDdl(conn, schema, name);
+            case SQLSERVER  -> sqlServerMatViewDdl(conn, schema, name);
+            default         -> "-- Materialized view DDL not available for " + name;
+        };
+    }
+
+    private String pgMatViewDdl(Connection conn, String schema, String name) throws SQLException {
+        String sql = "SELECT definition FROM pg_matviews WHERE schemaname = ? AND matviewname = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String definition = rs.getString(1);
+                    if (definition != null && !definition.isBlank())
+                        return "CREATE MATERIALIZED VIEW " + schema + "." + name + " AS\n" + definition.trim() + ";";
+                }
+            }
+        }
+        return "-- Materialized view DDL not available for " + name;
+    }
+
+    private String oracleMatViewDdl(Connection conn, String schema, String name) throws SQLException {
+        String sql = "SELECT QUERY FROM ALL_MVIEWS WHERE OWNER = ? AND MVIEW_NAME = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String query = rs.getString(1);
+                    if (query != null && !query.isBlank())
+                        return "CREATE MATERIALIZED VIEW " + schema + "." + name + " AS\n" + query.trim() + ";";
+                }
+            }
+        }
+        return "-- Materialized view DDL not available for " + name;
+    }
+
+    private String sqlServerMatViewDdl(Connection conn, String schema, String name) throws SQLException {
+        String sql = "SELECT OBJECT_DEFINITION(OBJECT_ID(? + '.' + ?))";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String def = rs.getString(1);
+                    if (def != null && !def.isBlank())
+                        return def.trim() + ";";
+                }
+            }
+        }
+        return "-- Materialized view DDL not available for " + name;
     }
 
     private String reconstructedViewDDL(Connection conn, DatabaseType dbType,

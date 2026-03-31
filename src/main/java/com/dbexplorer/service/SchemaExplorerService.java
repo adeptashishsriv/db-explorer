@@ -77,6 +77,37 @@ public class SchemaExplorerService {
         return names;
     }
 
+    public List<String> getMatViews(Connection conn, DatabaseType dbType, String schema) throws SQLException {
+        List<String> names = new ArrayList<>();
+        String sql = switch (dbType) {
+            case POSTGRESQL -> "SELECT matviewname FROM pg_matviews WHERE schemaname = ? ORDER BY matviewname";
+            case ORACLE     -> "SELECT mview_name FROM ALL_MVIEWS WHERE owner = ? ORDER BY mview_name";
+            case SQLSERVER  -> "SELECT name FROM sys.views WHERE schema_id = SCHEMA_ID(?) AND OBJECTPROPERTY(object_id, 'IsIndexed') = 1 ORDER BY name";
+            case MYSQL, SQLITE, DYNAMODB -> null;
+            case GENERIC    -> "";  // sentinel: use DatabaseMetaData fallback
+        };
+
+        if (sql == null) return Collections.emptyList();
+
+        if (sql.isEmpty()) {
+            // Generic JDBC: try the "MATERIALIZED VIEW" table type
+            DatabaseMetaData meta = conn.getMetaData();
+            try (ResultSet rs = meta.getTables(null, schema, "%", new String[]{"MATERIALIZED VIEW"})) {
+                while (rs.next()) names.add(rs.getString("TABLE_NAME"));
+            } catch (SQLException ignored) {}
+            Collections.sort(names);
+            return names;
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) names.add(rs.getString(1));
+            }
+        } catch (SQLException ignored) {}
+        return names;
+    }
+
     public List<String> getSequences(Connection conn, DatabaseType dbType, String schema) throws SQLException {
         List<String> names = new ArrayList<>();
         String sql = switch (dbType) {

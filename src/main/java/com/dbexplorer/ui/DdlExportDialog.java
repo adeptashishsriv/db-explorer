@@ -1,15 +1,32 @@
 package com.dbexplorer.ui;
 
-import com.dbexplorer.model.ConnectionInfo;
-import com.dbexplorer.service.DdlExportService;
-
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
+import java.util.concurrent.Callable;
+
+import javax.swing.Box;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JToolBar;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import com.dbexplorer.model.ConnectionInfo;
+import com.dbexplorer.service.DdlExportService;
 
 /**
  * Non-modal dialog that generates and displays DDL for an entire schema.
@@ -69,6 +86,82 @@ public class DdlExportDialog extends JDialog {
             @Override
             protected String doInBackground() throws Exception {
                 return new DdlExportService().exportSchema(conn, info.getDbType(), schema);
+            }
+            @Override
+            protected void done() {
+                try {
+                    String ddl = get();
+                    textArea.setText(ddl);
+                    textArea.setCaretPosition(0);
+                    int lines = ddl.split("\n", -1).length;
+                    statusLabel.setText("  " + lines + " lines generated");
+                    statusLabel.setForeground(UIManager.getColor("Label.foreground"));
+                } catch (Exception ex) {
+                    textArea.setText("-- Error generating DDL:\n-- " + ex.getMessage());
+                    statusLabel.setText("  Error: " + ex.getMessage());
+                    statusLabel.setForeground(new Color(200, 50, 50));
+                }
+            }
+        }.execute();
+    }
+
+    /**
+     * Constructor for single-object DDL export (e.g. a materialized view).
+     * The {@code ddlSupplier} is called on a background thread; the result is
+     * displayed in the same text area as the schema-level constructor.
+     *
+     * @param owner       parent frame
+     * @param dialogTitle title for the dialog window
+     * @param fileName    default file name (without extension) for Save
+     * @param ddlSupplier callable that produces the DDL string; runs off the EDT
+     */
+    public DdlExportDialog(Frame owner, String dialogTitle, String fileName,
+                           Callable<String> ddlSupplier) {
+        super(owner, dialogTitle, false);
+
+        textArea = new JTextArea();
+        textArea.setEditable(false);
+        textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        textArea.setLineWrap(false);
+        textArea.setText("Generating DDL…");
+
+        JScrollPane scroll = new JScrollPane(textArea,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        JToolBar tb = new JToolBar();
+        tb.setFloatable(false);
+
+        JButton copyBtn = new JButton("Copy", DbIcons.MENU_COPY);
+        copyBtn.setToolTipText("Copy DDL to clipboard");
+        copyBtn.addActionListener(e -> copyToClipboard());
+
+        JButton saveBtn = new JButton("Save", DbIcons.MENU_SAVE);
+        saveBtn.setToolTipText("Save DDL to a .sql file");
+        saveBtn.addActionListener(e -> saveToFile(fileName));
+
+        statusLabel = new JLabel("  Generating…");
+        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        statusLabel.setForeground(Color.GRAY);
+
+        tb.add(copyBtn);
+        tb.add(Box.createHorizontalStrut(6));
+        tb.add(saveBtn);
+        tb.add(Box.createHorizontalStrut(12));
+        tb.add(statusLabel);
+
+        setLayout(new BorderLayout());
+        add(tb,     BorderLayout.NORTH);
+        add(scroll, BorderLayout.CENTER);
+
+        setSize(900, 700);
+        setLocationRelativeTo(owner);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return ddlSupplier.call();
             }
             @Override
             protected void done() {

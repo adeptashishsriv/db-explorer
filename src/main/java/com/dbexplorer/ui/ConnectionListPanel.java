@@ -61,6 +61,7 @@ public class ConnectionListPanel extends JPanel {
     // Marker strings for category nodes
     static final String CAT_TABLES = "Tables";
     static final String CAT_VIEWS = "Views";
+    static final String CAT_MAT_VIEWS = "Materialized Views";
     static final String CAT_SEQUENCES = "Sequences";
     static final String CAT_INDEXES = "Indexes";
     static final String CAT_FUNCTIONS = "Functions";
@@ -200,6 +201,32 @@ public class ConnectionListPanel extends JPanel {
                     exportMenu.addSeparator();
                     exportMenu.add(exportCsv);
                     menu.add(exportMenu);
+
+                    menu.show(tree, e.getX(), e.getY());
+                } else if (userObj instanceof ObjectNode on && on.isMatView()) {
+                    JPopupMenu menu = new JPopupMenu();
+
+                    JMenuItem viewData = new JMenuItem("View Data", DbIcons.MENU_VIEW_DATA);
+                    viewData.addActionListener(a -> {
+                        if (onViewData != null) {
+                            String schema = on.schema;
+                            String sql;
+                            if (schema != null && !schema.isEmpty() && on.connectionInfo.getDbType() != DatabaseType.MYSQL) {
+                                sql = "SELECT * FROM " + schema + "." + on.name;
+                            } else {
+                                sql = "SELECT * FROM " + on.name;
+                            }
+                            onViewData.accept(on.connectionInfo, sql);
+                        }
+                    });
+                    menu.add(viewData);
+
+                    JMenuItem exportDdl = new JMenuItem("Export DDL", DbIcons.MENU_DDL);
+                    exportDdl.addActionListener(a -> {
+                        if (onExportTable != null)
+                            onExportTable.accept(on.connectionInfo, "MAT_VIEW_DDL\0" + on.schema + "\0" + on.name);
+                    });
+                    menu.add(exportDdl);
 
                     menu.show(tree, e.getX(), e.getY());
                 }
@@ -378,7 +405,7 @@ public class ConnectionListPanel extends JPanel {
 
     private void loadCategoriesForSchema(DefaultMutableTreeNode schemaNode, SchemaNode sn) {
         schemaNode.removeAllChildren();
-        String[] categories = {CAT_TABLES, CAT_VIEWS, CAT_SEQUENCES, CAT_INDEXES, CAT_FUNCTIONS, CAT_PROCEDURES};
+        String[] categories = {CAT_TABLES, CAT_VIEWS, CAT_MAT_VIEWS, CAT_SEQUENCES, CAT_INDEXES, CAT_FUNCTIONS, CAT_PROCEDURES};
         for (String cat : categories) {
             DefaultMutableTreeNode catNode = new DefaultMutableTreeNode(
                     new CategoryNode(cat, sn.schema, sn.connectionInfo));
@@ -402,6 +429,7 @@ public class ConnectionListPanel extends JPanel {
                 return switch (cn.category) {
                     case CAT_TABLES    -> schemaExplorer.getTables(conn, dbType, cn.schema);
                     case CAT_VIEWS     -> schemaExplorer.getViews(conn, dbType, cn.schema);
+                    case CAT_MAT_VIEWS -> schemaExplorer.getMatViews(conn, dbType, cn.schema);
                     case CAT_SEQUENCES -> schemaExplorer.getSequences(conn, dbType, cn.schema);
                     case CAT_INDEXES   -> schemaExplorer.getIndexes(conn, dbType, cn.schema);
                     case CAT_FUNCTIONS -> schemaExplorer.getFunctions(conn, dbType, cn.schema);
@@ -518,6 +546,7 @@ public class ConnectionListPanel extends JPanel {
     record ObjectNode(String name, String category, String schema, ConnectionInfo connectionInfo) {
         @Override public String toString() { return name; }
         public boolean isTable() { return CAT_TABLES.equals(category); }
+        public boolean isMatView() { return CAT_MAT_VIEWS.equals(category); }
     }
 
     // --- Custom tree cell renderer with icons ---
@@ -554,6 +583,7 @@ public class ConnectionListPanel extends JPanel {
                 setIcon(switch (on.category) {
                     case CAT_TABLES    -> DbIcons.TABLE;
                     case CAT_VIEWS     -> DbIcons.VIEW;
+                    case CAT_MAT_VIEWS -> DbIcons.MAT_VIEW;
                     case CAT_FUNCTIONS -> DbIcons.FUNCTION;
                     case CAT_PROCEDURES -> DbIcons.PROCEDURE;
                     case CAT_INDEXES   -> DbIcons.INDEX;
