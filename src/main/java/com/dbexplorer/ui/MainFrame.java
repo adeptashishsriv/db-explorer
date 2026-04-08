@@ -9,7 +9,22 @@ import java.awt.event.WindowEvent;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 import com.dbexplorer.health.DashboardConfig;
 import com.dbexplorer.health.HealthCollector;
@@ -17,7 +32,11 @@ import com.dbexplorer.model.ConnectionInfo;
 import com.dbexplorer.model.DatabaseType;
 import com.dbexplorer.model.LazyQueryResult;
 import com.dbexplorer.model.QueryResult;
-import com.dbexplorer.service.*;
+import com.dbexplorer.service.AIConfigManager;
+import com.dbexplorer.service.ConnectionManager;
+import com.dbexplorer.service.DdlExportService;
+import com.dbexplorer.service.DynamoDbExecutor;
+import com.dbexplorer.service.QueryExecutor;
 
 public class MainFrame extends JFrame {
 
@@ -319,14 +338,15 @@ public class MainFrame extends JFrame {
     
     private void createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
-        
-        // Edit menu
-        JMenu editMenu = new JMenu("Edit");
-        JMenuItem settingsItem = new JMenuItem("AI Configuration");
-        settingsItem.addActionListener(e -> openAIConfigDialog());
-        editMenu.add(settingsItem);
-        
-        menuBar.add(editMenu);
+
+        // Settings menu
+        JMenu settingsMenu = new JMenu("Settings");
+        settingsMenu.setMnemonic(java.awt.event.KeyEvent.VK_S);
+        JMenuItem aiConfigItem = new JMenuItem("AI Configuration...");
+        aiConfigItem.addActionListener(e -> openAIConfigDialog());
+        settingsMenu.add(aiConfigItem);
+
+        menuBar.add(settingsMenu);
         setJMenuBar(menuBar);
     }
 

@@ -209,7 +209,7 @@ Join thousands of developers who have simplified their database workflow.
 Download DB Explorer today: [CTA Button]
 
 Best regards,
-Adept Software Team
+Astro Adept AI Labs Team
 ```
 
 ---
@@ -235,9 +235,9 @@ Download: [link]
 
 3/5 ⚡ Real-Time SQL Execution with syntax highlighting and error checking
 
-4/5 🔍 Interactive Schema Browser with expandable tree navigation
+4/6 🔍 Interactive Schema Browser with expandable tree navigation
 
-5/5 💾 Export Capabilities: CSV, INSERT, UPDATE, DDL formats
+5/6 💾 Export Capabilities: CSV, INSERT, UPDATE, DDL formats
 
 Download now: [link] #DatabaseTools #SQL
 ```
@@ -341,7 +341,7 @@ Quick Start Guide:
 Need help? Check out our documentation: [link]
 
 Happy querying!
-Adept Software Team
+Astro Adept AI Labs Team
 ```
 
 #### Email 2: Feature Spotlight (Day 3)
@@ -372,7 +372,7 @@ Manual garbage collection when you need it.
 Questions? Reply to this email!
 
 Best,
-Adept Software Team
+Astro Adept AI Labs Team
 ```
 
 #### Email 3: Tips & Tricks (Day 7)
@@ -405,7 +405,7 @@ Master DB Explorer: [link]
 Need more help? We're here!
 
 Cheers,
-Adept Software Team
+Astro Adept AI Labs Team
 ```
 
 ---
@@ -635,14 +635,14 @@ for our development team." - Mike Johnson, Lead Developer
 ```
 FOR IMMEDIATE RELEASE
 
-Adept Software Announces DB Explorer v2.4.1
+Astro Adept AI Labs Announces DB Explorer v2.4.1
 Complete Database Development Environment Now Available
 
-[City, Date] - Adept Software today announced the release of DB Explorer v2.4.1,
+[City, Date] - Astro Adept AI Labs today announced the release of DB Explorer v2.4.1,
 a comprehensive database query tool and explorer designed for modern development teams.
 
 "DB Explorer eliminates the need to switch between different database tools,"
-said Ashish Srivastava, founder of Adept Software. "With support for PostgreSQL,
+said Ashish Srivastava, founder of Astro Adept AI Labs. "With support for PostgreSQL,
 MySQL, Oracle, SQL Server, and SQLite, developers can manage all their databases
 from one powerful, intuitive interface."
 
@@ -656,8 +656,8 @@ Key features include:
 DB Explorer is available for Windows, macOS, and Linux. For more information,
 visit [website] or download at [download link].
 
-About Adept Software
-Adept Software develops professional database tools for developers and
+About Astro Adept AI Labs
+Astro Adept AI Labs develops professional database tools for developers and
 database administrators worldwide.
 
 Media Contact:
@@ -777,7 +777,7 @@ adeptashish@gmail.com
 
 ### Marketing Team
 - **Campaign Manager:** Ashish Srivastava
-- **Content Creator:** Adept Software Team
+- **Content Creator:** Astro Adept AI Labs Team
 - **Design Team:** External agency (recommended)
 
 ### Technical Support
@@ -853,6 +853,6 @@ The marketing campaign outlined above provides a comprehensive strategy to reach
 
 ---
 
-*Campaign created by Adept Software Marketing Team*  
+*Campaign created by Astro Adept AI Labs Marketing Team*
 *Date: March 31, 2026*  
 *Version: 1.0*

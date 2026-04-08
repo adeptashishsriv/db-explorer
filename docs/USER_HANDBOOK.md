@@ -308,4 +308,4 @@ DB Explorer supports AWS DynamoDB using **PartiQL**.
 
 ---
 
-*Built Adept Software*  | © 2026
+*Built Astro Adept AI Labs*  | © 2026

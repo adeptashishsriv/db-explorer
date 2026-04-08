@@ -297,5 +297,5 @@ This marketing kit provides comprehensive social media content, email templates,
 
 ---
 
-*Marketing Kit created by Adept Software*  
+*Marketing Kit created by Astro Adept AI Labs*  
 *Date: March 31, 2026*

@@ -1,11 +1,11 @@
 package com.dbexplorer.service;
 
-import java.io.*;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.*;
+import java.util.Map;
 
 import com.dbexplorer.model.AIConfig;
 import com.google.gson.JsonArray;
@@ -96,7 +96,9 @@ public class AIAssistantService {
         }
 
         JsonArray messages = new JsonArray();
-        messages.add(createMsg("system", systemPrompt));
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            messages.add(createMsg("system", systemPrompt));
+        }
         messages.add(createMsg("user", userQuery));
         requestBody.add("messages", messages);
 
@@ -115,7 +117,9 @@ public class AIAssistantService {
         requestBody.addProperty("stream", false);
 
         JsonArray messages = new JsonArray();
-        messages.add(createMsg("system", systemPrompt));
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            messages.add(createMsg("system", systemPrompt));
+        }
         messages.add(createMsg("user", userQuery));
         requestBody.add("messages", messages);
 
@@ -130,7 +134,9 @@ public class AIAssistantService {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", config.getModel());
         requestBody.addProperty("max_tokens", config.getMaxTokens());
-        requestBody.addProperty("system", systemPrompt);
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            requestBody.addProperty("system", systemPrompt);
+        }
 
         JsonArray messages = new JsonArray();
         messages.add(createMsg("user", userQuery));
@@ -147,16 +153,27 @@ public class AIAssistantService {
     private String callGeminiAPI(AIConfig config, String systemPrompt, String userQuery) throws IOException, InterruptedException {
         JsonObject requestBody = new JsonObject();
         JsonArray contents = new JsonArray();
+
         JsonObject part = new JsonObject();
         JsonArray parts = new JsonArray();
-        
-        part.addProperty("text", systemPrompt + "\n\nUser Query: " + userQuery);
+        part.addProperty("text", userQuery);
         parts.add(part);
-        
+
         JsonObject content = new JsonObject();
         content.add("parts", parts);
         contents.add(content);
         requestBody.add("contents", contents);
+
+        // Pass system prompt via system_instruction (correct Gemini API field)
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            JsonObject sysInstruction = new JsonObject();
+            JsonArray sysParts = new JsonArray();
+            JsonObject sysPart = new JsonObject();
+            sysPart.addProperty("text", systemPrompt);
+            sysParts.add(sysPart);
+            sysInstruction.add("parts", sysParts);
+            requestBody.add("system_instruction", sysInstruction);
+        }
 
         String url = config.getBaseUrl() + "/models/" + config.getModel() + ":generateContent?key=" + config.getApiKey();
         
@@ -195,9 +212,9 @@ public class AIAssistantService {
         String query = "Hello";
         String response = switch (config.getApiProvider()) {
             case "Claude" -> callClaudeAPI(config, null, query);
-            case "Gemini" -> callGeminiAPI(config, "Test", query);
-            case "DeepSeek" -> callOpenAICompatibleAPI(config, "Test", query);
-            default -> callOpenAIAPI(config, "Test", query);
+            case "Gemini" -> callGeminiAPI(config, null, query);
+            case "DeepSeek" -> callOpenAICompatibleAPI(config, null, query);
+            default -> callOpenAIAPI(config, null, query);
         };
         
         String result = extractContent(config.getApiProvider(), response);

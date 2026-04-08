@@ -440,6 +440,22 @@ public class SqlEditorPanel extends JPanel {
             panel.add(sc, gbc);
         }
 
+        // AI tip
+        int aiRow = 3 + steps.length + shortcuts.length;
+        JLabel aiTitle = new JLabel("\u2728  AI Assistant");
+        aiTitle.setFont(aiTitle.getFont().deriveFont(Font.BOLD, 12f));
+        gbc.gridy = aiRow;
+        gbc.insets = new Insets(24, 0, 6, 0);
+        panel.add(aiTitle, gbc);
+
+        JLabel aiTip = new JLabel("<html><center>Configure your AI model via <b>Settings \u2192 AI Configuration...</b><br>"
+                + "to enable natural-language SQL generation.</center></html>");
+        aiTip.setFont(aiTip.getFont().deriveFont(Font.PLAIN, 11f));
+        aiTip.setForeground(Color.GRAY);
+        gbc.gridy = aiRow + 1;
+        gbc.insets = new Insets(2, 0, 2, 0);
+        panel.add(aiTip, gbc);
+
         return panel;
     }
 }

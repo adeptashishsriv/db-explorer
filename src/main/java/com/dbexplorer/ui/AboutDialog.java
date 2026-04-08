@@ -102,7 +102,7 @@ public class AboutDialog extends JDialog {
         sep.setMaximumSize(new Dimension(280, 2));
         sep.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel companyLabel = new JLabel("\u00a9 2026 Adept Software");
+        JLabel companyLabel = new JLabel("\u00a9 2026 Astro Adept AI Labs");
         companyLabel.setFont(companyLabel.getFont().deriveFont(Font.BOLD, 12f));
         companyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 

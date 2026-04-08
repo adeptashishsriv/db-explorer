@@ -56,4 +56,4 @@ A new opt-in health monitoring panel accessible via the toolbar bar-chart button
 - Fixed missing `flatlaf-extras` dependency compilation issue
 
 ---
-*Built by Ashish Srivastava | © 2026 Adept Software*
+*Built by Ashish Srivastava | © 2026 Astro Adept AI Labs*

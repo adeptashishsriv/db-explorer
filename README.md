@@ -4,7 +4,7 @@
 **Version:** 2.4.1  
 **Release Date:** March 31, 2026  
 **Built by:** Ashish Srivastava  
-**Copyright:** © 2026 Adept Software
+**Copyright:** © 2026 Astro Adept AI Labs
 
 ---
 
@@ -408,9 +408,9 @@ For detailed release notes, see [RELEASE_NOTES.md](docs/RELEASE_NOTES.md) in the
 
 ## License
 
-DB Explorer is proprietary software developed by Adept Software.
+DB Explorer is proprietary software developed by Astro Adept AI Labs.
 
-Copyright (c) 2026 Adept Software. All rights reserved.
+Copyright (c) 2026 Astro Adept AI Labs. All rights reserved.
 
 This software is provided "as is" without warranty of any kind. The authors and copyright holders disclaim all warranties, express or implied, including but not limited to the implied warranties of merchantability and fitness for a particular purpose.
 
@@ -418,12 +418,12 @@ Permission is granted to use this software for personal, educational, and commer
 
 1. This copyright notice must be included in all copies or substantial portions of the software.
 
-2. The software may not be redistributed or sold without explicit written permission from Adept Software.
+2. The software may not be redistributed or sold without explicit written permission from Astro Adept AI Labs.
 
 3. Any modifications to the source code must be clearly marked and documented.
 
 For licensing inquiries, please contact:   
-Adept Software  
+Astro Adept AI Labs  
 Email: adeptashish@gmail.com
 
 ---
@@ -483,4 +483,4 @@ For the latest updates and releases, visit our project repository.
 
 ---
 
-*Built by Adept Software | © 2026*
+*Built by Astro Adept AI Labs | © 2026*

@@ -98,4 +98,4 @@ Connecting to a new database takes seconds.
 
 ---
 
-*Built by Adept Software | © 2026 | Version 2.4.1*
+*Built by Astro Adept AI Labs | © 2026 | Version 2.4.1*

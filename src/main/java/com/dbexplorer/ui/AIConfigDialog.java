@@ -1,9 +1,40 @@
 package com.dbexplorer.ui;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
 import java.util.HashMap;
 import java.util.Map;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -36,6 +67,7 @@ public class AIConfigDialog extends JDialog {
     private JButton testButton;
     private JButton saveButton;
     private JButton deleteButton;
+    private JProgressBar testProgressBar;
 
     // Provider default Base URL mapping
     private static final Map<String, String> PROVIDER_URLS = new HashMap<>();
@@ -143,6 +175,15 @@ public class AIConfigDialog extends JDialog {
         // Buttons panel
         JPanel buttonsPanel = createButtonsPanel();
         mainPanel.add(buttonsPanel);
+
+        // Progress bar for Test Connection
+        testProgressBar = new JProgressBar();
+        testProgressBar.setIndeterminate(true);
+        testProgressBar.setStringPainted(true);
+        testProgressBar.setString("Testing connection...");
+        testProgressBar.setVisible(false);
+        testProgressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, testProgressBar.getPreferredSize().height));
+        mainPanel.add(testProgressBar);
 
         JScrollPane scrollPane = new JScrollPane(mainPanel);
         add(scrollPane, BorderLayout.CENTER);
@@ -373,6 +414,7 @@ public class AIConfigDialog extends JDialog {
         testConfig.setTemperature(temperatureSlider.getValue() / 100.0);
         
         testButton.setEnabled(false);
+        testProgressBar.setVisible(true);
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         new Thread(() -> {
@@ -382,12 +424,14 @@ public class AIConfigDialog extends JDialog {
                 SwingUtilities.invokeLater(() -> {
                     setCursor(Cursor.getDefaultCursor());
                     testButton.setEnabled(true);
+                    testProgressBar.setVisible(false);
                     JOptionPane.showMessageDialog(this, result);
                 });
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() -> {
                     setCursor(Cursor.getDefaultCursor());
                     testButton.setEnabled(true);
+                    testProgressBar.setVisible(false);
                     JOptionPane.showMessageDialog(this, "Failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 });
             }

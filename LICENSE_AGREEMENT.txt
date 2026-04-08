@@ -14,7 +14,7 @@ AGREEMENT. IF YOU DO NOT AGREE TO THESE TERMS, DO NOT INSTALL OR USE THE SOFTWAR
 SECTION 1 — GRANT OF LICENSE
 --------------------------------------------------------------------------------
 
-1.1  Subject to the terms and conditions of this Agreement Adept Software (a project identity, not a registered company) ("Licensor"), 
+1.1  Subject to the terms and conditions of this Agreement Astro Adept AI Labs (a project identity, not a registered company) ("Licensor"), 
      hereby grants to Licensee a worldwide, royalty-free, non-exclusive, non-transferable, 
      revocable license to install and use the Software solely for Licensee's own internal 
      purposes, including use within a commercial organisation or enterprise environment,
@@ -240,7 +240,7 @@ SECTION 10 — CONTACT AND NOTICES
 All notices, requests for modification approval, feature enhancement requests,
 and other communications under this Agreement shall be directed to:
 
-     Organisation:   Adept Software (a project identity, not a registered company)
+     Organisation:   Astro Adept AI Labs (a project identity, not a registered company)
      Contact:        sourceforge mailing list / forum at https://db-explorer.sourceforge.net/
      Project:        DB Explorer
 
@@ -276,6 +276,6 @@ UNDERSTOOD, AND AGREES TO BE BOUND BY ALL TERMS AND CONDITIONS OF THIS
 END-USER LICENSE AGREEMENT.
 
 ================================================================================
-Copyright (c) 2026 Adept Software (a project identity, not a registered company). 
+Copyright (c) 2026 Astro Adept AI Labs (a project identity, not a registered company). 
 All rights reserved.
 ================================================================================
