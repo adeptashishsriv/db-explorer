@@ -1,8 +1,12 @@
 package com.dbexplorer.ui;
 
 import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import com.dbexplorer.model.AIConfig;
 import com.dbexplorer.service.AIAssistantService;
@@ -15,13 +19,14 @@ public class AIConfigDialog extends JDialog {
     private final AIConfigManager configManager;
     private AIConfig editingConfig;
     private boolean saved = false;
+    private boolean isSelfTriggered = false;
 
     private JList<AIConfig> configList;
     private DefaultListModel<AIConfig> listModel;
 
     private JTextField nameField;
     private JComboBox<String> providerCombo;
-    private JComboBox<String> modelCombo;
+    private JTextField modelField;
     private JPasswordField apiKeyField;
     private JTextField baseUrlField;
     private JSpinner maxTokensSpinner;
@@ -32,13 +37,22 @@ public class AIConfigDialog extends JDialog {
     private JButton saveButton;
     private JButton deleteButton;
 
+    // Provider default Base URL mapping
+    private static final Map<String, String> PROVIDER_URLS = new HashMap<>();
+    static {
+        PROVIDER_URLS.put("OpenAI", "https://api.openai.com/v1");
+        PROVIDER_URLS.put("Claude", "https://api.anthropic.com/v1");
+        PROVIDER_URLS.put("DeepSeek", "https://api.deepseek.com");
+        PROVIDER_URLS.put("Gemini", "https://generativelanguage.googleapis.com/v1beta");
+        PROVIDER_URLS.put("Custom", "");
+    }
+
     public AIConfigDialog(Frame owner, AIConfigManager configManager) {
         super(owner, "AI Assistant Configuration", true);
         this.configManager = configManager;
         initializeUI();
         loadConfigs();
         
-        // If no configs exist, start with default fields populated
         if (configManager.getConfigs().isEmpty()) {
             clearFields();
         }
@@ -50,7 +64,7 @@ public class AIConfigDialog extends JDialog {
     private void initializeUI() {
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
-        setPreferredSize(new Dimension(800, 600));
+        setPreferredSize(new Dimension(850, 600));
 
         // Left side: Config list
         JPanel leftPanel = new JPanel(new BorderLayout(5, 5));
@@ -144,18 +158,46 @@ public class AIConfigDialog extends JDialog {
         gbc.gridx = 0; gbc.gridy = 0;
         panel.add(new JLabel("Provider:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        providerCombo = new JComboBox<>(new String[]{"OpenAI", "Claude", "Custom"});
-        providerCombo.addActionListener(e -> updateModelCombo());
+        providerCombo = new JComboBox<>(PROVIDER_URLS.keySet().toArray(new String[0]));
+        providerCombo.addActionListener(e -> onProviderChanged());
         panel.add(providerCombo, gbc);
 
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        panel.add(new JLabel("Model:"), gbc);
+        panel.add(new JLabel("Model Name:"), gbc);
         gbc.gridx = 1; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        modelCombo = new JComboBox<>();
-        modelCombo.setEditable(false);
-        panel.add(modelCombo, gbc);
+        modelField = new JTextField();
+        modelField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { updateConfigName(); }
+            public void removeUpdate(DocumentEvent e) { updateConfigName(); }
+            public void changedUpdate(DocumentEvent e) { updateConfigName(); }
+        });
+        panel.add(modelField, gbc);
 
         return panel;
+    }
+
+    private void onProviderChanged() {
+        String provider = (String) providerCombo.getSelectedItem();
+        if (provider != null) {
+            String defaultUrl = PROVIDER_URLS.get(provider);
+            if (defaultUrl != null && !defaultUrl.isEmpty()) {
+                baseUrlField.setText(defaultUrl);
+            }
+            updateConfigName();
+        }
+    }
+
+    private void updateConfigName() {
+        if (isSelfTriggered) return;
+        
+        String provider = (String) providerCombo.getSelectedItem();
+        String model = modelField.getText().trim();
+        
+        if (provider != null && !model.isEmpty()) {
+            isSelfTriggered = true;
+            nameField.setText(provider + "-" + model);
+            isSelfTriggered = false;
+        }
     }
 
     private JPanel createApiKeySection() {
@@ -236,47 +278,17 @@ public class AIConfigDialog extends JDialog {
         return panel;
     }
 
-    private void updateModelCombo() {
-        String provider = (String) providerCombo.getSelectedItem();
-        Object currentModel = modelCombo.getSelectedItem();
-        modelCombo.removeAllItems();
-
-        if ("OpenAI".equals(provider)) {
-            modelCombo.addItem("gpt-5-nano");
-            modelCombo.addItem("gpt-4-turbo");
-            modelCombo.addItem("gpt-4");
-            modelCombo.addItem("gpt-3.5-turbo");
-            baseUrlField.setText("https://api.openai.com/v1");
-        } else if ("Claude".equals(provider)) {
-            modelCombo.addItem("claude-sonnet-4-20250514");
-            modelCombo.addItem("claude-3-5-sonnet-20240620");
-            modelCombo.addItem("claude-3-opus-20240229");
-            modelCombo.addItem("claude-3-sonnet-20240229");
-            modelCombo.addItem("claude-3-haiku-20240307");
-            baseUrlField.setText("https://api.anthropic.com/v1");
-        } else {
-            modelCombo.addItem("Custom Model");
-            baseUrlField.setText("");
-        }
-        
-        if (currentModel != null) {
-            modelCombo.setSelectedItem(currentModel);
-        } else {
-            modelCombo.setSelectedIndex(0);
-        }
-    }
-
     private void updateTemperatureLabel() {
         double temp = temperatureSlider.getValue() / 100.0;
         temperatureLabel.setText(String.format("%.2f", temp));
     }
 
     private void populateFields(AIConfig config) {
+        isSelfTriggered = true;
         editingConfig = config;
         nameField.setText(config.getName());
         providerCombo.setSelectedItem(config.getApiProvider());
-        updateModelCombo();
-        modelCombo.setSelectedItem(config.getModel());
+        modelField.setText(config.getModel());
         apiKeyField.setText(config.getApiKey());
         baseUrlField.setText(config.getBaseUrl());
         maxTokensSpinner.setValue(config.getMaxTokens());
@@ -284,20 +296,24 @@ public class AIConfigDialog extends JDialog {
         updateTemperatureLabel();
         enabledCheckBox.setSelected(config.isEnabled());
         deleteButton.setEnabled(true);
+        isSelfTriggered = false;
     }
 
     private void clearFields() {
+        isSelfTriggered = true;
         editingConfig = null;
         nameField.setText("");
-        providerCombo.setSelectedIndex(0);
-        updateModelCombo();
-        // Since updateModelCombo sets index 0, model and base URL are now populated
+        providerCombo.setSelectedItem("OpenAI");
+        modelField.setText("gpt-3.5-turbo");
         apiKeyField.setText("");
+        baseUrlField.setText(PROVIDER_URLS.get("OpenAI"));
         maxTokensSpinner.setValue(1000);
         temperatureSlider.setValue(70);
         updateTemperatureLabel();
         enabledCheckBox.setSelected(true);
         deleteButton.setEnabled(false);
+        isSelfTriggered = false;
+        updateConfigName();
     }
 
     private void loadConfigs() {
@@ -317,7 +333,7 @@ public class AIConfigDialog extends JDialog {
         
         editingConfig.setName(nameField.getText());
         editingConfig.setApiProvider((String) providerCombo.getSelectedItem());
-        editingConfig.setModel((String) modelCombo.getSelectedItem());
+        editingConfig.setModel(modelField.getText());
         editingConfig.setApiKey(new String(apiKeyField.getPassword()));
         editingConfig.setBaseUrl(baseUrlField.getText());
         editingConfig.setMaxTokens((Integer) maxTokensSpinner.getValue());
@@ -350,7 +366,7 @@ public class AIConfigDialog extends JDialog {
     private void testConnection() {
         AIConfig testConfig = new AIConfig();
         testConfig.setApiProvider((String) providerCombo.getSelectedItem());
-        testConfig.setModel((String) modelCombo.getSelectedItem());
+        testConfig.setModel(modelField.getText());
         testConfig.setApiKey(new String(apiKeyField.getPassword()));
         testConfig.setBaseUrl(baseUrlField.getText());
         testConfig.setMaxTokens((Integer) maxTokensSpinner.getValue());
@@ -379,16 +395,4 @@ public class AIConfigDialog extends JDialog {
     }
 
     public boolean isSaved() { return saved; }
-
-    private AIConfig createDefaultConfig() {
-        AIConfig config = new AIConfig();
-        config.setName("Default OpenAI");
-        config.setApiProvider("OpenAI");
-        config.setModel("gpt-3.5-turbo");
-        config.setBaseUrl("https://api.openai.com/v1");
-        config.setMaxTokens(1000);
-        config.setTemperature(0.7);
-        config.setEnabled(true);
-        return config;
-    }
 }
