@@ -345,8 +345,43 @@ public class MainFrame extends JFrame {
         JMenuItem aiConfigItem = new JMenuItem("AI Configuration...");
         aiConfigItem.addActionListener(e -> openAIConfigDialog());
         settingsMenu.add(aiConfigItem);
-
         menuBar.add(settingsMenu);
+
+        // Help menu
+        JMenu helpMenu = new JMenu("Help");
+        helpMenu.setMnemonic(java.awt.event.KeyEvent.VK_H);
+
+        JMenuItem userGuideItem = new JMenuItem("User Guide");
+        userGuideItem.addActionListener(e -> new HelpDialog(this, HelpDialog.Tab.USER_GUIDE).setVisible(true));
+        helpMenu.add(userGuideItem);
+
+        JMenuItem dbConnItem = new JMenuItem("DB Connection");
+        dbConnItem.addActionListener(e -> new HelpDialog(this, HelpDialog.Tab.DB_CONNECTION).setVisible(true));
+        helpMenu.add(dbConnItem);
+
+        JMenuItem aiHelpItem = new JMenuItem("AI Configuration");
+        aiHelpItem.addActionListener(e -> new HelpDialog(this, HelpDialog.Tab.AI_CONFIG).setVisible(true));
+        helpMenu.add(aiHelpItem);
+
+        JMenuItem healthItem = new JMenuItem("DB Health Dashboard");
+        healthItem.addActionListener(e -> new HelpDialog(this, HelpDialog.Tab.DB_HEALTH).setVisible(true));
+        helpMenu.add(healthItem);
+
+        JMenuItem execPlanItem = new JMenuItem("Execution Plan");
+        execPlanItem.addActionListener(e -> new HelpDialog(this, HelpDialog.Tab.EXEC_PLAN).setVisible(true));
+        helpMenu.add(execPlanItem);
+
+        JMenuItem themesItem = new JMenuItem("Themes");
+        themesItem.addActionListener(e -> new HelpDialog(this, HelpDialog.Tab.THEMES).setVisible(true));
+        helpMenu.add(themesItem);
+
+        helpMenu.addSeparator();
+
+        JMenuItem aboutItem = new JMenuItem("About DB Explorer");
+        aboutItem.addActionListener(e -> new AboutDialog(this).setVisible(true));
+        helpMenu.add(aboutItem);
+
+        menuBar.add(helpMenu);
         setJMenuBar(menuBar);
     }
 
@@ -1039,7 +1074,9 @@ public class MainFrame extends JFrame {
             aiAssistantPanel = new AIAssistantPanel(connectionManager, aiConfigManager);
             aiAssistantDialog = new JDialog(this, "AI SQL Generator Assistant", false);
             aiAssistantDialog.setContentPane(aiAssistantPanel);
-            aiAssistantDialog.setSize(900, 750);
+            int w = Math.max(750, (int)(getWidth()  * 0.85));
+            int h = Math.max(500, (int)(getHeight() * 0.80));
+            aiAssistantDialog.setSize(w, h);
             aiAssistantDialog.setLocationRelativeTo(this);
             aiAssistantDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
         } else {

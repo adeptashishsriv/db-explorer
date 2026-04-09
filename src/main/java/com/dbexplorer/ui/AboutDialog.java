@@ -106,10 +106,10 @@ public class AboutDialog extends JDialog {
         companyLabel.setFont(companyLabel.getFont().deriveFont(Font.BOLD, 12f));
         companyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel locationLabel = new JLabel("Vancouver, Canada");
-        locationLabel.setFont(locationLabel.getFont().deriveFont(Font.PLAIN, 11f));
-        locationLabel.setForeground(Color.GRAY);
-        locationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // JLabel locationLabel = new JLabel("Vancouver, Canada");
+        // locationLabel.setFont(locationLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        // locationLabel.setForeground(Color.GRAY);
+        // locationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel rightsLabel = new JLabel("All rights reserved.");
         rightsLabel.setFont(rightsLabel.getFont().deriveFont(Font.PLAIN, 10f));
@@ -130,8 +130,8 @@ public class AboutDialog extends JDialog {
         textPanel.add(Box.createVerticalStrut(12));
         textPanel.add(companyLabel);
         textPanel.add(Box.createVerticalStrut(2));
-        textPanel.add(locationLabel);
-        textPanel.add(Box.createVerticalStrut(2));
+        // textPanel.add(locationLabel);
+        // textPanel.add(Box.createVerticalStrut(2));
         textPanel.add(rightsLabel);
 
         // --- OK button ---

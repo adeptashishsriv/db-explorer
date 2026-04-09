@@ -1,13 +1,30 @@
 package com.dbexplorer.ui;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
 import com.dbexplorer.model.AIConfig;
@@ -32,7 +49,6 @@ public class AIAssistantPanel extends JPanel {
     private JButton clearButton;
     private JLabel statusLabel;
     private JProgressBar progressBar;
-    private JPanel footerPanel;
     private ConnectionInfo currentConnection;
     private String currentSchemaInfo = "";
 
@@ -46,7 +62,7 @@ public class AIAssistantPanel extends JPanel {
 
     private void initializeUI() {
         setLayout(new BorderLayout(5, 5));
-        setBorder(new EmptyBorder(10, 10, 10, 10));
+        setBorder(new EmptyBorder(6, 8, 6, 8));
 
         // Top Context Bar
         JPanel contextBar = new JPanel(new BorderLayout());
@@ -81,7 +97,7 @@ public class AIAssistantPanel extends JPanel {
         add(centerWrapper, BorderLayout.CENTER);
 
         // Footer panel
-        footerPanel = createFooterPanel();
+        JPanel footerPanel = createFooterPanel();
         add(footerPanel, BorderLayout.SOUTH);
 
         updateConfigurationStatus();
@@ -129,7 +145,7 @@ public class AIAssistantPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Describe Your Query in Natural Language"));
 
-        naturalLanguageTextArea = new JTextArea(6, 40);
+        naturalLanguageTextArea = new JTextArea(4, 40);
         naturalLanguageTextArea.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
         naturalLanguageTextArea.setLineWrap(true);
         naturalLanguageTextArea.setWrapStyleWord(true);
@@ -155,7 +171,7 @@ public class AIAssistantPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Generated SQL"));
 
-        generatedSQLTextArea = new JTextArea(6, 40);
+        generatedSQLTextArea = new JTextArea(4, 40);
         generatedSQLTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
         generatedSQLTextArea.setLineWrap(true);
         generatedSQLTextArea.setWrapStyleWord(true);
@@ -178,20 +194,19 @@ public class AIAssistantPanel extends JPanel {
     }
 
     private JPanel createFooterPanel() {
-        JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setPreferredSize(new Dimension(0, 30));
-        
+        JPanel panel = new JPanel(new BorderLayout(5, 2));
+
         statusLabel = new JLabel("Ready");
         statusLabel.setFont(statusLabel.getFont().deriveFont(Font.PLAIN, 11f));
-        panel.add(statusLabel, BorderLayout.WEST);
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        panel.add(statusLabel, BorderLayout.CENTER);
 
         progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
         progressBar.setStringPainted(true);
         progressBar.setString("AI is thinking...");
         progressBar.setVisible(false);
-        progressBar.setPreferredSize(new Dimension(300, 20));
-        panel.add(progressBar, BorderLayout.CENTER);
+        panel.add(progressBar, BorderLayout.NORTH);
 
         return panel;
     }
@@ -282,8 +297,6 @@ public class AIAssistantPanel extends JPanel {
         generateButton.setEnabled(false);
         progressBar.setVisible(true);
         statusLabel.setText("AI is thinking...");
-        footerPanel.revalidate();
-        footerPanel.repaint();
 
         new Thread(() -> {
             try {
@@ -300,8 +313,6 @@ public class AIAssistantPanel extends JPanel {
                     statusLabel.setForeground(Color.GREEN.darker());
                     generateButton.setEnabled(true);
                     progressBar.setVisible(false);
-                    footerPanel.revalidate();
-                    footerPanel.repaint();
                 });
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {
@@ -310,8 +321,6 @@ public class AIAssistantPanel extends JPanel {
                     statusLabel.setForeground(Color.RED);
                     generateButton.setEnabled(true);
                     progressBar.setVisible(false);
-                    footerPanel.revalidate();
-                    footerPanel.repaint();
                 });
             }
         }).start();

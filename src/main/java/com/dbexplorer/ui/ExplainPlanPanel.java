@@ -1,16 +1,37 @@
 package com.dbexplorer.ui;
 
-import com.dbexplorer.model.DatabaseType;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.tree.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTree;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.DefaultTreeModel;
+
+import com.dbexplorer.model.DatabaseType;
 
 /**
  * Rich execution plan viewer.
@@ -57,7 +78,7 @@ public class ExplainPlanPanel extends JPanel {
     private static final String CARD_TEXT  = "text";
 
     // text card
-    private final JTextPane textPane;
+    private final JTextArea textPane;
     // tree card
     private final JTree planTree;
     private final DefaultTreeModel treeModel;
@@ -80,10 +101,14 @@ public class ExplainPlanPanel extends JPanel {
         statsBar.add(statsLabel, BorderLayout.WEST);
 
         // ── Text card ────────────────────────────────────────────────────────
-        textPane = new JTextPane();
+        textPane = new JTextArea();
         textPane.setEditable(false);
         textPane.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        textPane.setContentType("text/plain");
+        textPane.setLineWrap(false);
+
+        JScrollPane textScroll = new JScrollPane(textPane,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
         // ── Tree card ────────────────────────────────────────────────────────
         treeModel = new DefaultTreeModel(new DefaultMutableTreeNode("(empty)"));
@@ -108,7 +133,7 @@ public class ExplainPlanPanel extends JPanel {
         // ── Card layout ──────────────────────────────────────────────────────
         cards = new CardLayout();
         contentArea = new JPanel(cards);
-        contentArea.add(new JScrollPane(textPane), CARD_TEXT);
+        contentArea.add(textScroll, CARD_TEXT);
         contentArea.add(new JScrollPane(planTree), CARD_TREE);
         JScrollPane tableScroll = new JScrollPane(planTable);
         tableScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);

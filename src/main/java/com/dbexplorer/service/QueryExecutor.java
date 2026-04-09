@@ -165,14 +165,28 @@ public class QueryExecutor {
                 }
             }
             case SQLSERVER -> {
+                // SET SHOWPLAN_TEXT ON causes SQL Server to return the execution
+                // plan as result sets instead of executing the query.
+                // Each result set contains one column with plan text rows.
+                // Must use a fresh statement and iterate all result sets.
                 try (Statement stmt = connection.createStatement()) {
                     stmt.execute("SET SHOWPLAN_TEXT ON");
-                    try (ResultSet rs = stmt.executeQuery(sql)) {
-                        while (rs.next()) {
-                            plan.append(rs.getString(1)).append("\n");
+                }
+                try (Statement stmt = connection.createStatement()) {
+                    boolean hasResults = stmt.execute(sql);
+                    while (hasResults) {
+                        try (ResultSet rs = stmt.getResultSet()) {
+                            while (rs.next()) {
+                                plan.append(rs.getString(1)).append("\n");
+                            }
                         }
+                        hasResults = stmt.getMoreResults();
                     }
-                    stmt.execute("SET SHOWPLAN_TEXT OFF");
+                } finally {
+                    // Always turn SHOWPLAN_TEXT off, even if the above throws
+                    try (Statement stmt = connection.createStatement()) {
+                        stmt.execute("SET SHOWPLAN_TEXT OFF");
+                    }
                 }
             }
             case DYNAMODB -> {
