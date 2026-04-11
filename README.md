@@ -1,6 +1,6 @@
 # DB Explorer — Database Query Tool & Explorer
 
-**Version:** 2.4.1 &nbsp; | &nbsp; **Released:** April 2026 &nbsp; | &nbsp; **By:** Ashish Srivastava &nbsp; | &nbsp; **©** 2026 Astro Adept AI Labs
+**Version:** 3.0.1 &nbsp; | &nbsp; **Released:** April 2026 &nbsp; | &nbsp; **By:** Ashish Srivastava &nbsp; | &nbsp; **©** 2026 Astro Adept AI Labs
 
 ---
 
@@ -12,7 +12,7 @@ DB Explorer is a cross-platform database query tool and schema explorer for deve
 
 ---
 
-## What's New in v2.4.1
+## What's New in v3.0.1
 
 | Feature | Details |
 |---------|---------|
@@ -37,7 +37,7 @@ DB Explorer is a cross-platform database query tool and schema explorer for deve
 # Build from source (requires JDK 17+, Maven 3.6+)
 git clone <repository-url>
 mvn clean package
-java -jar target/db-explorer-2.4.1.jar
+java -jar target/db-explorer-3.0.1.jar
 
 # Run pre-built JAR
 java -jar db-explorer.jar
@@ -100,7 +100,7 @@ java -Xmx2048m -jar db-explorer.jar
 git clone <repository-url>
 cd db-explorer
 mvn clean package
-java -jar target/db-explorer-2.4.1.jar
+java -jar target/db-explorer-3.0.1.jar
 ```
 
 ### Option C — Development Setup
@@ -264,7 +264,7 @@ Log locations: Windows `%APPDATA%\DBExplorer\logs\` · macOS `~/Library/Logs/DBE
 
 ## Release Notes
 
-### v2.4.1 — April 2026 *(Latest)*
+### v3.0.1 — April 2026 *(Latest)*
 
 | Area | Change |
 |------|--------|

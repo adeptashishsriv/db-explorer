@@ -6,7 +6,7 @@
 
     <groupId>com.dbexplorer</groupId>
     <artifactId>db-explorer</artifactId>
-    <version>2.5.0</version>
+    <version>3.0.2</version>
     <packaging>jar</packaging>
 
     <properties>

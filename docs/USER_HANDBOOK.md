@@ -1,6 +1,6 @@
 # DB Explorer — User Handbook
 
-**Version:** 2.5.0  
+**Version:** 3.0.1  
 **Date:** April 2026  
 **Publisher:** Astro Adept AI Labs
 

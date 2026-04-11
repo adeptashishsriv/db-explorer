@@ -12,6 +12,7 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
@@ -31,6 +32,8 @@ import javax.swing.SwingConstants;
 public class AboutDialog extends JDialog {
 
     private static final String ICON_PATH = "/icons/db-explorer-icon.png";
+
+    private final AtomicBoolean updateInProgress;
 
     /** Reads a property from the filtered app.properties resource. Falls back to the given default. */
     private static String loadAppProperty(String key, String fallback) {
@@ -54,7 +57,12 @@ public class AboutDialog extends JDialog {
     }
 
     public AboutDialog(Frame owner) {
+        this(owner, new AtomicBoolean(false));
+    }
+
+    public AboutDialog(Frame owner, AtomicBoolean updateInProgress) {
         super(owner, "About DB Explorer", true);
+        this.updateInProgress = updateInProgress;
         setResizable(false);
         initUI();
         pack();
@@ -138,8 +146,21 @@ public class AboutDialog extends JDialog {
         JButton okBtn = new JButton("OK");
         okBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         okBtn.addActionListener(e -> dispose());
+
+        // --- Check for Updates button ---
+        JButton checkUpdatesBtn = new JButton("Check for Updates\u2026");
+        checkUpdatesBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        checkUpdatesBtn.setEnabled(!updateInProgress.get());
+        checkUpdatesBtn.addActionListener(e -> {
+            Frame ownerFrame = (Frame) getOwner();
+            new UpdateDialog(ownerFrame, updateInProgress).setVisible(true);
+            // Re-evaluate enabled state when the update dialog closes
+            checkUpdatesBtn.setEnabled(!updateInProgress.get());
+        });
+
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         btnPanel.add(okBtn);
+        btnPanel.add(checkUpdatesBtn);
 
         content.add(iconLabel, BorderLayout.NORTH);
         content.add(textPanel, BorderLayout.CENTER);

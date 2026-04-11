@@ -1,5 +1,6 @@
 package com.dbexplorer;
 
+import com.dbexplorer.service.UpdateService;
 import com.dbexplorer.ui.MainFrame;
 import com.dbexplorer.ui.ThemeManager;
 
@@ -12,6 +13,7 @@ public class App {
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
             frame.setVisible(true);
+            UpdateService.scheduleStartupCheck(frame, frame.getUpdateInProgress());
         });
     }
 }

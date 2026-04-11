@@ -8,6 +8,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -39,6 +40,8 @@ import com.dbexplorer.service.DynamoDbExecutor;
 import com.dbexplorer.service.QueryExecutor;
 
 public class MainFrame extends JFrame {
+
+    private final AtomicBoolean updateInProgress = new AtomicBoolean(false);
 
     private final ConnectionManager connectionManager;
     private final QueryExecutor queryExecutor;
@@ -326,7 +329,7 @@ public class MainFrame extends JFrame {
         toolbar.add(themeCombo);
 
         JButton aboutBtn = makeToolButton("About", DbIcons.TB_ABOUT);
-        aboutBtn.addActionListener(e -> new AboutDialog(this).setVisible(true));
+        aboutBtn.addActionListener(e -> new AboutDialog(this, updateInProgress).setVisible(true));
         toolbar.addSeparator();
         toolbar.add(aboutBtn);
 
@@ -377,8 +380,24 @@ public class MainFrame extends JFrame {
 
         helpMenu.addSeparator();
 
+        JMenuItem checkUpdatesItem = new JMenuItem("Check for Updates\u2026");
+        checkUpdatesItem.addActionListener(e -> {
+            new UpdateDialog(this, updateInProgress).setVisible(true);
+        });
+        // Disable while an update check/download is already in progress
+        helpMenu.addMenuListener(new javax.swing.event.MenuListener() {
+            @Override public void menuSelected(javax.swing.event.MenuEvent e) {
+                checkUpdatesItem.setEnabled(!updateInProgress.get());
+            }
+            @Override public void menuDeselected(javax.swing.event.MenuEvent e) {}
+            @Override public void menuCanceled(javax.swing.event.MenuEvent e) {}
+        });
+        helpMenu.add(checkUpdatesItem);
+
+        helpMenu.addSeparator();
+
         JMenuItem aboutItem = new JMenuItem("About DB Explorer");
-        aboutItem.addActionListener(e -> new AboutDialog(this).setVisible(true));
+        aboutItem.addActionListener(e -> new AboutDialog(this, updateInProgress).setVisible(true));
         helpMenu.add(aboutItem);
 
         menuBar.add(helpMenu);
@@ -1028,6 +1047,11 @@ public class MainFrame extends JFrame {
         return msg;
     }
     
+    /** Returns the shared update-in-progress flag for startup check coordination. */
+    public AtomicBoolean getUpdateInProgress() {
+        return updateInProgress;
+    }
+
     /**
      * Opens the AI Configuration dialog.
      * Allows users to configure API provider, model, and authentication.
